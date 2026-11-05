@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sgcFSearch Help</title>
+<meta name="description" content="sgcFSearch 1.0.0 user guide: whole-disk file search for Windows, search bar, query syntax, content search, command line and pipe API.">
+<style>
+:root {
+  --bg: #ffffff;
+  --fg: #1d2330;
+  --muted: #5a6475;
+  --border: #dfe3ea;
+  --side-bg: #f6f7f9;
+  --accent: #0b5cb5;
+  --accent-weak: #e7f0fb;
+  --code-bg: #f3f5f8;
+  --th-bg: #eef1f5;
+  --note-bg: #fff7e0;
+  --note-border: #d9a400;
+  --tip-bg: #e9f6ee;
+  --tip-border: #2f9e55;
+  --kbd-bg: #fbfbfc;
+  --badge: #c2410c;
+  --badge-fg: #ffffff;
+  /* search bar schematic, the app's light palette */
+  --sv-back: #f9f9f9;
+  --sv-box: #ffffff;
+  --sv-border: #d0d0d0;
+  --sv-text: #1a1a1a;
+  --sv-dim: #606060;
+  --sv-acc: #005fb8;
+  --sv-sel: #e0ecfa;
+  --sv-chip: #f3f3f3;
+  --sv-chipb: #d6d6d6;
+  --sv-chipon-fg: #ffffff;
+  /* architecture diagram */
+  --dg-fill: #f6f8fb;
+  --dg-fill2: #e7f0fb;
+  --dg-stroke: #9aa7b8;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171c;
+    --fg: #e3e7ee;
+    --muted: #9aa4b2;
+    --border: #2c323c;
+    --side-bg: #191d23;
+    --accent: #6cb2ff;
+    --accent-weak: #1c2b3e;
+    --code-bg: #1d2229;
+    --th-bg: #1f242c;
+    --note-bg: #2b2513;
+    --note-border: #b8920f;
+    --tip-bg: #14281c;
+    --tip-border: #3fae68;
+    --kbd-bg: #222830;
+    --badge: #f97316;
+    --badge-fg: #111111;
+    --sv-back: #202020;
+    --sv-box: #2d2d2d;
+    --sv-border: #404040;
+    --sv-text: #f0f0f0;
+    --sv-dim: #a0a0a0;
+    --sv-acc: #60cdff;
+    --sv-sel: #2d3e54;
+    --sv-chip: #303030;
+    --sv-chipb: #474747;
+    --sv-chipon-fg: #000000;
+    --dg-fill: #1b2028;
+    --dg-fill2: #1c2b3e;
+    --dg-stroke: #5d6b7e;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 12px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.6 "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 100vh; }
+.sidebar {
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  background: var(--side-bg); border-right: 1px solid var(--border);
+  padding: 18px 14px 24px 18px; font-size: 13.5px;
+}
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.brand svg { flex: none; }
+.brand b { font-size: 17px; }
+.brand span { display: block; color: var(--muted); font-size: 12px; }
+.toc > summary { display: none; }
+.toc ol { list-style: none; margin: 0; padding: 0; }
+.toc > ol > li { margin: 2px 0; }
+.toc > ol > li > a { display: block; padding: 4px 8px; border-radius: 6px; color: var(--fg); font-weight: 600; }
+.toc ol ol { margin: 0 0 6px 10px; border-left: 1px solid var(--border); }
+.toc ol ol a { display: block; padding: 2px 8px; color: var(--muted); border-radius: 4px; }
+.toc a.active { background: var(--accent-weak); color: var(--accent); }
+main { padding: 32px 48px 80px; max-width: 980px; min-width: 0; }
+.cover { border-bottom: 1px solid var(--border); padding-bottom: 22px; margin-bottom: 8px; }
+.cover .logo { display: none; }
+.cover h1 { font-size: 34px; margin: 0; line-height: 1.2; }
+.cover .subtitle { font-size: 20px; color: var(--muted); margin: 4px 0 10px; }
+.cover .meta { color: var(--muted); font-size: 14px; margin: 0; }
+.print-toc { display: none; }
+section.chapter { padding-top: 8px; }
+h2 { font-size: 26px; margin: 46px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--border); line-height: 1.25; }
+h2 .num, .print-toc .num { color: var(--accent); margin-right: 8px; }
+h3 { font-size: 19px; margin: 30px 0 8px; line-height: 1.3; }
+h4 { font-size: 16px; margin: 22px 0 6px; }
+p, ul, ol { margin: 8px 0 12px; }
+li { margin: 3px 0; }
+code, kbd, pre { font-family: Consolas, "Cascadia Mono", "Courier New", monospace; font-size: 0.9em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: break-word; }
+kbd {
+  display: inline-block; background: var(--kbd-bg); border: 1px solid var(--border);
+  border-bottom-width: 2px; border-radius: 4px; padding: 0 6px; font-size: 0.85em; line-height: 1.6; white-space: nowrap;
+}
+pre {
+  background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px; overflow-x: auto; line-height: 1.45; margin: 10px 0 16px;
+}
+pre code { background: none; padding: 0; font-size: 1em; overflow-wrap: normal; }
+.tbl { overflow-x: auto; margin: 10px 0 18px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { border: 1px solid var(--border); padding: 6px 9px; text-align: left; vertical-align: top; }
+th { background: var(--th-bg); font-weight: 600; }
+td code { white-space: normal; }
+.note, .tip {
+  border-left: 4px solid var(--note-border); background: var(--note-bg);
+  padding: 9px 14px; border-radius: 0 8px 8px 0; margin: 12px 0 16px;
+}
+.tip { border-left-color: var(--tip-border); background: var(--tip-bg); }
+.note b:first-child, .tip b:first-child { margin-right: 4px; }
+figure { margin: 14px 0 20px; }
+figure svg { width: 100%; height: auto; display: block; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
+figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+.label-schematic { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--badge); border: 1px solid var(--badge); border-radius: 4px; padding: 0 6px; margin-right: 6px; }
+/* schematic classes */
+.sv-back { fill: var(--sv-back); stroke: var(--sv-border); }
+.sv-box { fill: var(--sv-box); stroke: var(--sv-border); }
+.sv-chip { fill: var(--sv-chip); stroke: var(--sv-chipb); }
+.sv-chipon { fill: var(--sv-acc); }
+.sv-sel { fill: var(--sv-sel); }
+.sv-accbar { fill: var(--sv-acc); }
+.sv-t { fill: var(--sv-text); font-family: "Segoe UI", system-ui, sans-serif; }
+.sv-d { fill: var(--sv-dim); font-family: "Segoe UI", system-ui, sans-serif; white-space: pre; }
+.sv-a { fill: var(--sv-acc); font-family: "Segoe UI", system-ui, sans-serif; font-weight: 600; }
+.sv-on { fill: var(--sv-chipon-fg); font-family: "Segoe UI", system-ui, sans-serif; }
+.sv-ico { fill: none; stroke: var(--sv-dim); stroke-width: 2; }
+.sv-doc { fill: var(--sv-box); stroke: var(--sv-dim); stroke-width: 1.4; }
+.badge circle { fill: var(--badge); }
+.badge text { fill: var(--badge-fg); font: 700 13px "Segoe UI", system-ui, sans-serif; }
+.dg-box { fill: var(--dg-fill); stroke: var(--dg-stroke); stroke-width: 1.2; }
+.dg-box2 { fill: var(--dg-fill2); stroke: var(--dg-stroke); stroke-width: 1.2; }
+.dg-t { fill: var(--fg); font: 600 13px "Segoe UI", system-ui, sans-serif; }
+.dg-s { fill: var(--muted); font: 12px "Segoe UI", system-ui, sans-serif; }
+.dg-line { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+.dg-head { fill: var(--muted); }
+.footer { margin-top: 56px; padding-top: 14px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+
+@media (max-width: 860px) {
+  .layout { display: block; }
+  .sidebar { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); padding: 12px 16px; }
+  .brand { margin-bottom: 8px; }
+  .toc > summary {
+    display: block; cursor: pointer; font-weight: 600; padding: 8px 10px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+  }
+  .toc[open] > summary { margin-bottom: 8px; }
+  main { padding: 18px 16px 60px; }
+  h2 { font-size: 22px; }
+  .cover h1 { font-size: 28px; }
+  table { font-size: 13px; }
+}
+
+@page {
+  size: A4;
+  margin: 18mm 16mm 20mm 16mm;
+  @bottom-center { content: counter(page); font: 9pt "Segoe UI", Arial, sans-serif; color: #666666; }
+}
+@page :first {
+  @bottom-center { content: none; }
+}
+@media print {
+  :root {
+    --bg: #ffffff; --fg: #1a1f2b; --muted: #555f6e; --border: #cfd5de; --side-bg: #ffffff;
+    --accent: #0b5cb5; --accent-weak: #e7f0fb; --code-bg: #f4f6f9; --th-bg: #eceff4;
+    --note-bg: #fff7e0; --note-border: #d9a400; --tip-bg: #e9f6ee; --tip-border: #2f9e55;
+    --kbd-bg: #fbfbfc; --badge: #c2410c; --badge-fg: #ffffff;
+    --sv-back: #f9f9f9; --sv-box: #ffffff; --sv-border: #d0d0d0; --sv-text: #1a1a1a; --sv-dim: #606060;
+    --sv-acc: #005fb8; --sv-sel: #e0ecfa; --sv-chip: #f3f3f3; --sv-chipb: #d6d6d6; --sv-chipon-fg: #ffffff;
+    --dg-fill: #f6f8fb; --dg-fill2: #e7f0fb; --dg-stroke: #9aa7b8;
+  }
+  html, body { background: #ffffff; color: var(--fg); }
+  body { font-size: 10pt; line-height: 1.45; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .layout { display: block; }
+  .sidebar, .no-print { display: none !important; }
+  main { padding: 0; max-width: none; }
+  .cover {
+    height: 245mm; display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+    border: 0; padding: 0 0 0 6mm; margin: 0; break-after: page;
+  }
+  .cover .logo { display: block; margin-bottom: 10mm; }
+  .cover h1 { font-size: 40pt; }
+  .cover .subtitle { font-size: 22pt; margin: 2mm 0 10mm; color: #333b48; }
+  .cover .meta { font-size: 12pt; line-height: 1.7; color: #333b48; }
+  .cover .rule { width: 60mm; height: 2px; background: #0b5cb5; margin: 0 0 8mm; }
+  .print-toc { display: block; break-after: page; }
+  .print-toc h2 { margin-top: 0; break-before: auto; }
+  .print-toc ol { list-style: none; padding: 0; margin: 0; }
+  .print-toc > ol > li { margin: 2.2mm 0 0; font-weight: 600; font-size: 10.5pt; break-inside: avoid; }
+  .print-toc ol ol { margin: 0.6mm 0 0 8mm; font-weight: 400; font-size: 9.2pt; column-count: 3; column-gap: 6mm; }
+  .print-toc ol ol li { margin: 0.3mm 0; break-inside: avoid; }
+  .print-toc a { color: #1a1f2b; }
+  section.chapter { break-before: page; padding-top: 0; }
+  h2 { margin-top: 0; font-size: 18pt; }
+  h3 { font-size: 13pt; margin: 6mm 0 2mm; }
+  h4 { font-size: 11pt; }
+  h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+  p, li { orphans: 3; widows: 3; }
+  table, pre, .note, .tip, figure, .tbl { break-inside: avoid; page-break-inside: avoid; }
+  .tbl { overflow: visible; }
+  table { font-size: 8.8pt; }
+  th, td { padding: 3.5px 6px; }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; overflow: visible; font-size: 8.4pt; }
+  pre code { white-space: pre-wrap; }
+  code { font-size: 8.8pt; }
+  kbd { font-size: 8pt; }
+  a { color: inherit; }
+  figure svg { max-height: 150mm; }
+  .footer { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<aside class="sidebar" aria-label="Table of contents">
+  <div class="brand">
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="8" fill="#0b5cb5"/><circle cx="15" cy="15" r="7" fill="none" stroke="#fff" stroke-width="2.6"/><line x1="20" y1="20" x2="26" y2="26" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
+    <div><b>sgcFSearch</b><span>User Guide, version 1.0.0</span></div>
+  </div>
+  <details class="toc" id="toc" open>
+    <summary>Contents</summary>
+    <ol>
+      <li><a href="#intro">1. Introduction</a>
+        <ol><li><a href="#intro-features">Main features</a></li><li><a href="#intro-req">System requirements</a></li><li><a href="#intro-parts">The parts</a></li></ol></li>
+      <li><a href="#install">2. Installation</a>
+        <ol><li><a href="#install-downloads">Downloads</a></li><li><a href="#install-setup">Install with the setup</a></li><li><a href="#install-unzip">Manual installation from the zip</a></li><li><a href="#install-cli">Command line and start at login</a></li><li><a href="#install-uninstall">Uninstall</a></li></ol></li>
+      <li><a href="#start">3. Getting started</a>
+        <ol><li><a href="#start-first">First run</a></li><li><a href="#start-states">Index states</a></li><li><a href="#start-hotkey">The hotkey</a></li><li><a href="#start-search">A first search</a></li></ol></li>
+      <li><a href="#bar">4. The search bar</a>
+        <ol><li><a href="#bar-layout">Layout</a></li><li><a href="#bar-rows">Result rows</a></li><li><a href="#bar-keys">Keyboard and mouse</a></li><li><a href="#bar-chips">Filter chips</a></li><li><a href="#bar-history">History</a></li><li><a href="#bar-folder">Folder picker</a></li></ol></li>
+      <li><a href="#query">5. Query syntax</a>
+        <ol><li><a href="#q-words">Words and modifiers</a></li><li><a href="#q-typo">Typo tolerance</a></li><li><a href="#q-path">Path tokens</a></li><li><a href="#q-filters">Filter reference</a></li><li><a href="#q-size">Size values</a></li><li><a href="#q-mtime">Date values</a></li><li><a href="#q-sort">Sort values</a></li><li><a href="#q-types">Type categories</a></li><li><a href="#q-examples">Worked examples</a></li></ol></li>
+      <li><a href="#content">6. Content search</a>
+        <ol><li><a href="#c-what">What is indexed</a></li><li><a href="#c-formats">File formats</a></li><li><a href="#c-limits">Limits and exclusions</a></li><li><a href="#c-modes">Search modes</a></li><li><a href="#c-sym">Symbol search</a></li><li><a href="#c-combine">Combining with name filters</a></li><li><a href="#c-fallback">Automatic fallback</a></li></ol></li>
+      <li><a href="#ranking">7. Ranking</a>
+        <ol><li><a href="#r-tiers">Match quality</a></li><li><a href="#r-score">The score</a></li><li><a href="#r-frecency">Frecency</a></li></ol></li>
+      <li><a href="#tray">8. Tray menu and settings</a>
+        <ol><li><a href="#tray-menu">Tray icon and menu</a></li><li><a href="#folders">Folders dialog</a></li><li><a href="#login">Start at login</a></li></ol></li>
+      <li><a href="#config">9. Configuration reference</a>
+        <ol><li><a href="#cfg-files">Data folder and files</a></li><li><a href="#cfg-json">config.json</a></li><li><a href="#cfg-env">Environment variables</a></li></ol></li>
+      <li><a href="#cli">10. Command line (sgcfs)</a>
+        <ol><li><a href="#cli-commands">Commands and options</a></li><li><a href="#cli-output">Output and exit codes</a></li><li><a href="#cli-examples">Examples</a></li><li><a href="#cli-stdio">JSON and stdio mode</a></li></ol></li>
+      <li><a href="#pipe">11. Pipe API (JSON lines)</a>
+        <ol><li><a href="#pipe-conn">Connection and security</a></li><li><a href="#pipe-ops">Requests</a></li><li><a href="#pipe-errors">Errors</a></li><li><a href="#pipe-sample">Client sample</a></li></ol></li>
+      <li><a href="#internals">12. How it works</a>
+        <ol><li><a href="#i-arch">Architecture</a></li><li><a href="#i-crawl">The crawl</a></li><li><a href="#i-index">The name index</a></li><li><a href="#i-live">Live updates</a></li><li><a href="#i-content">The content index</a></li></ol></li>
+      <li><a href="#performance">13. Performance</a></li>
+      <li><a href="#faq">14. Troubleshooting and FAQ</a></li>
+      <li><a href="#history">15. Version history</a></li>
+    </ol>
+  </details>
+</aside>
+
+<main>
+
+<header class="cover" id="top">
+  <svg class="logo" width="96" height="96" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="8" fill="#0b5cb5"/><circle cx="15" cy="15" r="7" fill="none" stroke="#fff" stroke-width="2.6"/><line x1="20" y1="20" x2="26" y2="26" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
+  <h1>sgcFSearch</h1>
+  <p class="subtitle">User Guide</p>
+  <div class="rule" aria-hidden="true"></div>
+  <p class="meta">Version 1.0.0<br>2026-11-03<br>eSeGeCe, <a href="https://www.esegece.com">https://www.esegece.com</a><br>Copyright &copy; 2026 eSeGeCe</p>
+</header>
+
+<nav class="print-toc" aria-label="Contents">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#intro"><span class="num">1</span>Introduction</a>
+      <ol><li><a href="#intro-features">Main features</a></li><li><a href="#intro-req">System requirements</a></li><li><a href="#intro-parts">The parts</a></li></ol></li>
+    <li><a href="#install"><span class="num">2</span>Installation</a>
+      <ol><li><a href="#install-downloads">Downloads</a></li><li><a href="#install-setup">Install with the setup</a></li><li><a href="#install-unzip">Manual installation from the zip</a></li><li><a href="#install-cli">Command line and start at login</a></li><li><a href="#install-uninstall">Uninstall</a></li></ol></li>
+    <li><a href="#start"><span class="num">3</span>Getting started</a>
+      <ol><li><a href="#start-first">First run</a></li><li><a href="#start-states">Index states</a></li><li><a href="#start-hotkey">The hotkey</a></li><li><a href="#start-search">A first search</a></li></ol></li>
+    <li><a href="#bar"><span class="num">4</span>The search bar</a>
+      <ol><li><a href="#bar-layout">Layout</a></li><li><a href="#bar-rows">Result rows</a></li><li><a href="#bar-keys">Keyboard and mouse</a></li><li><a href="#bar-chips">Filter chips</a></li><li><a href="#bar-history">History</a></li><li><a href="#bar-folder">Folder picker</a></li></ol></li>
+    <li><a href="#query"><span class="num">5</span>Query syntax</a>
+      <ol><li><a href="#q-words">Words and modifiers</a></li><li><a href="#q-typo">Typo tolerance</a></li><li><a href="#q-path">Path tokens</a></li><li><a href="#q-filters">Filter reference</a></li><li><a href="#q-size">Size values</a></li><li><a href="#q-mtime">Date values</a></li><li><a href="#q-sort">Sort values</a></li><li><a href="#q-types">Type categories</a></li><li><a href="#q-examples">Worked examples</a></li></ol></li>
+    <li><a href="#content"><span class="num">6</span>Content search</a>
+      <ol><li><a href="#c-what">What is indexed</a></li><li><a href="#c-formats">File formats</a></li><li><a href="#c-limits">Limits and exclusions</a></li><li><a href="#c-modes">Search modes</a></li><li><a href="#c-sym">Symbol search</a></li><li><a href="#c-combine">Combining with name filters</a></li><li><a href="#c-fallback">Automatic fallback</a></li></ol></li>
+    <li><a href="#ranking"><span class="num">7</span>Ranking</a>
+      <ol><li><a href="#r-tiers">Match quality</a></li><li><a href="#r-score">The score</a></li><li><a href="#r-frecency">Frecency</a></li></ol></li>
+    <li><a href="#tray"><span class="num">8</span>Tray menu and settings</a>
+      <ol><li><a href="#tray-menu">Tray icon and menu</a></li><li><a href="#folders">Folders dialog</a></li><li><a href="#login">Start at login</a></li></ol></li>
+    <li><a href="#config"><span class="num">9</span>Configuration reference</a>
+      <ol><li><a href="#cfg-files">Data folder and files</a></li><li><a href="#cfg-json">config.json</a></li><li><a href="#cfg-env">Environment variables</a></li></ol></li>
+    <li><a href="#cli"><span class="num">10</span>Command line (sgcfs)</a>
+      <ol><li><a href="#cli-commands">Commands and options</a></li><li><a href="#cli-output">Output and exit codes</a></li><li><a href="#cli-examples">Examples</a></li><li><a href="#cli-stdio">JSON and stdio mode</a></li></ol></li>
+    <li><a href="#pipe"><span class="num">11</span>Pipe API (JSON lines)</a>
+      <ol><li><a href="#pipe-conn">Connection and security</a></li><li><a href="#pipe-ops">Requests</a></li><li><a href="#pipe-errors">Errors</a></li><li><a href="#pipe-sample">Client sample</a></li></ol></li>
+    <li><a href="#internals"><span class="num">12</span>How it works</a>
+      <ol><li><a href="#i-arch">Architecture</a></li><li><a href="#i-crawl">The crawl</a></li><li><a href="#i-index">The name index</a></li><li><a href="#i-live">Live updates</a></li><li><a href="#i-content">The content index</a></li></ol></li>
+    <li><a href="#performance"><span class="num">13</span>Performance</a></li>
+    <li><a href="#faq"><span class="num">14</span>Troubleshooting and FAQ</a></li>
+    <li><a href="#history"><span class="num">15</span>Version history</a></li>
+  </ol>
+</nav>
+
+<!-- ============================================================ 1 -->
+<section class="chapter" id="intro">
+<h2><span class="num">1</span>Introduction</h2>
+<p>sgcFSearch is a whole-disk file search tool for Windows. It keeps an index of the names of every file and folder on your fixed drives, answers queries in milliseconds while you type, and keeps the index current while files change. A search bar opens with a global hotkey, the <code>sgcfs</code> command line client gives the same results in a terminal, and a local named pipe API lets other programs ask questions too.</p>
+<p>Besides file names, sgcFSearch can search the text inside files located in your content folders (your user folder by default), including Office documents and, through Windows filters, PDF files.</p>
+<p>sgcFSearch is modelled on <a href="https://github.com/R-Hatim/scry">scry</a> and inspired by fsearch. It is an independent implementation written in Delphi.</p>
+
+<h3 id="intro-features">Main features</h3>
+<ul>
+  <li>Name index of every fixed drive, built by a multi-threaded crawler on the NT directory API and saved to <code>names.idx</code> for fast restarts.</li>
+  <li>Live updates while the app runs, plus a catch-up through the NTFS change journal (USN journal) for changes made while it was closed. No administrator rights are needed.</li>
+  <li>Search bar on a global hotkey with ranked results, file icons, highlighted matches, filter chips, search history, open, show in folder and copy.</li>
+  <li>Typo tolerant matching and a rich query syntax: name modifiers, path tokens, extension, type, kind, folder scope, path text, size, modified date, regular expression, limit and sort filters.</li>
+  <li>Ranking that learns from the files you open or copy (frecency).</li>
+  <li>Content index of the files under your content folders, searched with <code>grep:</code>, <code>regex:</code> and <code>sym:</code>.</li>
+  <li><code>sgcfs</code> command line client with plain, long and JSON output, a JSON lines bridge, status, stop, show, install, uninstall and bench commands.</li>
+  <li>Named pipe API (one JSON object per line) restricted to the current user.</li>
+  <li>Tray icon with the index status, a Folders dialog, Start at login and the daemon log.</li>
+  <li>Two downloads, both digitally signed: a per user installer (recommended) and a zip for a manual installation. No administrator rights are needed.</li>
+</ul>
+
+<h3 id="intro-req">System requirements</h3>
+<div class="tbl"><table>
+<tr><th>Item</th><th>Requirement</th></tr>
+<tr><td>Operating system</td><td>Windows 10 version 1809 (build 17763) or later, or Windows 11, 64-bit (x64).</td></tr>
+<tr><td>Drives</td><td>Every fixed drive is indexed by default. On NTFS volumes the change journal is used to catch up quickly after a restart. Other file systems are indexed by the crawler and are rescanned instead of using the journal.</td></tr>
+<tr><td>Rights</td><td>A normal user account. sgcFSearch runs, indexes and reads the change journal without administrator rights.</td></tr>
+<tr><td>Memory and disk</td><td>They grow with the number of files. See <a href="#performance">Performance</a> for measurements on a PC with 3.4 million files.</td></tr>
+</table></div>
+
+<h3 id="intro-parts">The parts</h3>
+<div class="tbl"><table>
+<tr><th>Part</th><th>What it is</th></tr>
+<tr><td><code>sgcFSearch.exe</code></td><td>The tray application. It owns the index (it is the "daemon"), shows the search bar on the hotkey and serves the pipe API. Only one instance runs per user.</td></tr>
+<tr><td><code>sgcfs.exe</code></td><td>The command line client. It talks to the running app through the pipe and starts it in the background when needed.</td></tr>
+<tr><td>Pipe API</td><td><code>\\.\pipe\sgcFSearch-&lt;your user SID&gt;</code>, JSON lines, for your own scripts and tools.</td></tr>
+<tr><td>Data folder</td><td><code>%LOCALAPPDATA%\sgcFSearch</code>: settings, index files, history, usage and the log.</td></tr>
+</table></div>
+</section>
+
+<!-- ============================================================ 2 -->
+<section class="chapter" id="install">
+<h2><span class="num">2</span>Installation</h2>
+
+<h3 id="install-downloads">Downloads</h3>
+<p>sgcFSearch has two downloads. Both are per user and need no administrator rights. The installer and the executables inside the zip are digitally signed by eSeGeCe.</p>
+<div class="tbl"><table>
+<tr><th>Download</th><th>What it is</th></tr>
+<tr><td><a href="https://download.esegece.com/sgcFSearch_setup.exe">https://download.esegece.com/sgcFSearch_setup.exe</a></td><td>The installer, recommended. It installs the app and the command line client, adds a Start menu entry and sets up the optional PATH and start at login entries.</td></tr>
+<tr><td><a href="https://download.esegece.com/sgcFSearch.zip">https://download.esegece.com/sgcFSearch.zip</a></td><td>A zip for a manual installation. It holds <code>sgcFSearch.exe</code>, <code>sgcfs.exe</code>, <code>sgcFSearch-Help.html</code> and <code>sgcFSearch-Help.pdf</code>, all in the root of the zip.</td></tr>
+</table></div>
+<p>Use one of them, not both. See <a href="#install-uninstall">Uninstall</a>.</p>
+
+<h3 id="install-setup">Install with the setup</h3>
+<p>Download and run <code>sgcFSearch_setup.exe</code>. The setup is per user: it does not ask for administrator rights and installs only for the current account.</p>
+<div class="tbl"><table>
+<tr><th>Item</th><th>Value</th></tr>
+<tr><td>Install folder</td><td><code>%LOCALAPPDATA%\Programs\sgcFSearch</code> (for example <code>C:\Users\you\AppData\Local\Programs\sgcFSearch</code>)</td></tr>
+<tr><td>Files</td><td><code>sgcFSearch.exe</code> (the app) and <code>sgcfs.exe</code> (the command line client)</td></tr>
+<tr><td>Start menu</td><td>A shortcut named <b>sgcFSearch</b></td></tr>
+<tr><td>Task: Start sgcFSearch at login</td><td>On by default. Writes the value <code>sgcFSearch</code> = <code>"&lt;install folder&gt;\sgcFSearch.exe" --background</code> under <code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code></td></tr>
+<tr><td>Task: Add sgcfs to the user PATH</td><td>On by default. Appends the install folder to the user <code>Path</code> variable, so <code>sgcfs</code> works in any new terminal. When this task is cleared, the setup removes the folder from the user PATH.</td></tr>
+<tr><td>Last page</td><td>"Start sgcFSearch now" starts the app in the tray (<code>--background</code>), without showing the bar.</td></tr>
+</table></div>
+<p>Both tasks are on the "Additional options" page of the wizard. When you install over an existing version, the setup first asks the running app to stop (<code>sgcfs stop</code>), waits until it has saved its index, and then replaces the files, so you can run the setup again to update.</p>
+<div class="note"><b>Note.</b> Open a new terminal after the installation. Terminals that were already open do not see the new PATH entry.</div>
+
+<h3 id="install-unzip">Manual installation from the zip</h3>
+<p>Download <a href="https://download.esegece.com/sgcFSearch.zip">sgcFSearch.zip</a> and unzip it to any folder you own, for example <code>C:\Users\you\Tools\sgcFSearch</code>. Then run <code>sgcFSearch.exe</code>. Nothing is written to the system until you ask for it.</p>
+<div class="tbl"><table>
+<tr><th>File</th><th>What it is</th></tr>
+<tr><td><code>sgcFSearch.exe</code></td><td>The app. It runs in the tray and shows the search bar on the hotkey.</td></tr>
+<tr><td><code>sgcfs.exe</code></td><td>The command line client.</td></tr>
+<tr><td><code>sgcFSearch-Help.html</code></td><td>This user guide, as a web page.</td></tr>
+<tr><td><code>sgcFSearch-Help.pdf</code></td><td>This user guide, as a PDF.</td></tr>
+</table></div>
+<p>Keep <code>sgcFSearch.exe</code> and <code>sgcfs.exe</code> in the same folder. <code>sgcfs</code> starts <code>sgcFSearch.exe</code> from its own folder when the app is not running. Settings and index files go to the data folder (<code>%LOCALAPPDATA%\sgcFSearch</code>, or the folder in <code>SGCFSEARCH_HOME</code>, see <a href="#cfg-env">Environment variables</a>), not to the program folder.</p>
+<p>To update, quit the app from the tray menu, then unzip the new files over the old ones.</p>
+
+<h3 id="install-cli">Command line and start at login</h3>
+<p>With the manual installation, two optional commands of <code>sgcfs</code> set this up for the current user. The setup does the same through its two tasks.</p>
+<div class="tbl"><table>
+<tr><th>Command</th><th>What it does</th></tr>
+<tr><td><code>sgcfs install</code></td><td>Adds the folder of <code>sgcfs.exe</code> to the user <code>Path</code> variable, so <code>sgcfs</code> works in any new terminal. If the folder is already there, it says so and changes nothing.</td></tr>
+<tr><td><code>sgcfs install --login</code></td><td>Does the same, and also starts sgcFSearch at login. It writes the value <code>sgcFSearch</code> = <code>"&lt;folder&gt;\sgcFSearch.exe" --background</code> under <code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code>.</td></tr>
+</table></div>
+<p>You can also switch Start at login on or off from the tray menu item <b>Start at login</b>.</p>
+<div class="note"><b>Note.</b> Open a new terminal after <code>sgcfs install</code>. Terminals that were already open do not see the new PATH entry. If you move the folder later, run <code>sgcfs install</code> again from the new location.</div>
+
+<h3 id="install-uninstall">Uninstall</h3>
+<p><b>Installed with the setup.</b> Uninstall sgcFSearch from the Windows Settings app, under <b>Apps</b>. The uninstaller:</p>
+<ul>
+  <li>stops the running app with <code>sgcfs stop</code>,</li>
+  <li>removes the program files and the Start menu shortcut,</li>
+  <li>removes the install folder from the user PATH,</li>
+  <li>removes the <code>sgcFSearch</code> login entry from the Run key, also when the tray menu created it.</li>
+</ul>
+<p><b>Installed manually from the zip.</b></p>
+<ol>
+  <li>Run <code>sgcfs uninstall</code>. It removes the login entry and removes the folder of <code>sgcfs.exe</code> from the user PATH.</li>
+  <li>Quit sgcFSearch from the tray menu.</li>
+  <li>Delete the folder you unzipped.</li>
+</ol>
+<p>In both cases the data folder <code>%LOCALAPPDATA%\sgcFSearch</code> (index, settings, history, usage, log) is kept. Optionally delete it by hand to remove every trace.</p>
+<div class="note"><b>Note.</b> Do not use both ways side by side. A copy from the zip and a copy from the setup would share the same data folder and the same login entry, and the PATH could point to either one. Uninstall the one you do not want before you use the other.</div>
+</section>
+
+<!-- ============================================================ 3 -->
+<section class="chapter" id="start">
+<h2><span class="num">3</span>Getting started</h2>
+
+<h3 id="start-first">First run</h3>
+<p>Start sgcFSearch from the Start menu entry created by the setup, or run <code>sgcFSearch.exe</code> from the folder where you unzipped it. The sgcFSearch icon appears in the notification area of the taskbar. When you start the app yourself, without <code>--background</code>, the search bar also opens right away.</p>
+<p>On the first run there is no index yet, so sgcFSearch crawls every fixed drive. While it crawls:</p>
+<ul>
+  <li>the tray tooltip reads <i>sgcFSearch: Indexing N entries</i>,</li>
+  <li>the status line of the search bar reads <i>Indexing... N files</i>,</li>
+  <li>you can already search. Results come from the part of the disk crawled so far and refresh as the index grows.</li>
+</ul>
+<p>When the crawl ends, the index is saved to <code>names.idx</code> and the state becomes <i>Ready</i>. Then the content indexer starts and reads the files of your content folders in the background, at low priority. While it works, the tray tooltip adds <i>N files being read</i>.</p>
+<p>On later starts, sgcFSearch loads <code>names.idx</code>, catches up with the changes made while it was closed, and is ready in about a second.</p>
+
+<h3 id="start-states">Index states</h3>
+<div class="tbl"><table>
+<tr><th>State (pipe, <code>sgcfs status</code>)</th><th>Tray tooltip</th><th>Search bar status</th><th>Meaning</th></tr>
+<tr><td><code>starting</code></td><td>Loading index</td><td>Starting...</td><td>The engine is starting.</td></tr>
+<tr><td><code>loading</code></td><td>Loading index</td><td>Loading index...</td><td><code>names.idx</code> is being read.</td></tr>
+<tr><td><code>crawling</code></td><td>Indexing N entries</td><td>Indexing... N files</td><td>First run (or no usable index): the drives are being crawled.</td></tr>
+<tr><td><code>catchup</code></td><td>Updating, N files, N folders</td><td>Updating index...</td><td>Changes made while the app was closed are applied. Drives listed in the settings but missing from the index are crawled.</td></tr>
+<tr><td><code>ready</code></td><td>Ready, N files, N folders</td><td>(nothing)</td><td>The index is complete and watched for changes.</td></tr>
+<tr><td><code>stopping</code>, <code>stopped</code></td><td>Stopping, Stopped</td><td>Index stopped</td><td>The app is saving its index and closing.</td></tr>
+</table></div>
+<p>Searches work in every state.</p>
+
+<h3 id="start-hotkey">The hotkey</h3>
+<p>Press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> to show the search bar. Press it again, or <kbd>Esc</kbd>, to hide it. If another program already owns that hotkey, sgcFSearch tries <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> and then <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd>. The hotkey in use is shown next to <b>Search</b> in the tray menu and written to the log. You can choose another hotkey in the <a href="#folders">Folders dialog</a>.</p>
+<p>A left click on the tray icon, the tray menu item <b>Search</b> and <code>sgcfs show</code> also open the bar.</p>
+
+<h3 id="start-search">A first search</h3>
+<ol>
+  <li>Press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd>.</li>
+  <li>Type part of a file name, for example <code>invoice</code>. Results appear as you type, best matches first.</li>
+  <li>Narrow it down: <code>invoice ext:pdf mtime:month</code> shows PDF files with "invoice" in the name modified in the last 30 days.</li>
+  <li>Use <kbd>Up</kbd> and <kbd>Down</kbd> to select a result and press <kbd>Enter</kbd> to open it, or <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to show it in its folder.</li>
+</ol>
+<p>The same search from a terminal:</p>
+<pre><code>sgcfs invoice ext:pdf mtime:month</code></pre>
+</section>
+
+<!-- ============================================================ 4 -->
+<section class="chapter" id="bar">
+<h2><span class="num">4</span>The search bar</h2>
+
+<h3 id="bar-layout">Layout</h3>
+<figure>
+<svg viewBox="0 0 760 268" role="img" aria-labelledby="bar-svg-title">
+  <title id="bar-svg-title">Schematic of the sgcFSearch search bar: search box, filter chips, result list and status line</title>
+  <rect class="sv-back" x="0.5" y="0.5" width="759" height="267" rx="10"/>
+  <!-- search box -->
+  <rect class="sv-box" x="10" y="10" width="740" height="46" rx="7"/>
+  <circle class="sv-ico" cx="31" cy="31" r="7"/>
+  <line class="sv-ico" x1="36" y1="36" x2="41" y2="41"/>
+  <text class="sv-t" x="52" y="39" font-size="18">report type:documents mtime:month</text>
+  <!-- chips -->
+  <rect class="sv-chipon" x="10" y="64" width="108" height="28" rx="14"/>
+  <text class="sv-on" x="24" y="83" font-size="13">Documents &#215;</text>
+  <rect class="sv-chipon" x="126" y="64" width="112" height="28" rx="14"/>
+  <text class="sv-on" x="140" y="83" font-size="13">Past month &#215;</text>
+  <rect class="sv-chip" x="246" y="64" width="52" height="28" rx="14"/>
+  <text class="sv-t" x="259" y="83" font-size="13">Size</text>
+  <rect class="sv-chip" x="306" y="64" width="96" height="28" rx="14"/>
+  <text class="sv-t" x="319" y="83" font-size="13">In folder...</text>
+  <rect class="sv-chip" x="410" y="64" width="52" height="28" rx="14"/>
+  <text class="sv-t" x="423" y="83" font-size="13">Sort</text>
+  <!-- row 1 selected -->
+  <rect class="sv-sel" x="10" y="100" width="740" height="46"/>
+  <rect class="sv-accbar" x="10" y="110" width="3" height="26"/>
+  <path class="sv-doc" d="M26 109 h16 l6 6 v22 h-22 z"/>
+  <text x="60" y="120" font-size="14"><tspan class="sv-a">report</tspan><tspan class="sv-t">-2026-q3.docx</tspan></text>
+  <text class="sv-d" x="60" y="139" font-size="12">C:\Users\you\Documents\Reports</text>
+  <text class="sv-d" x="740" y="139" font-size="12" text-anchor="end">84.0 KB     2026-10-28 09:14</text>
+  <!-- row 2 -->
+  <path class="sv-doc" d="M26 155 h16 l6 6 v22 h-22 z"/>
+  <text x="60" y="166" font-size="14"><tspan class="sv-t">Annual </tspan><tspan class="sv-a">report</tspan><tspan class="sv-t">.pdf</tspan></text>
+  <text class="sv-d" x="60" y="185" font-size="12">C:\Users\you\Documents</text>
+  <text class="sv-d" x="740" y="185" font-size="12" text-anchor="end">1.2 MB     2026-10-15 16:02</text>
+  <!-- row 3 -->
+  <path class="sv-doc" d="M26 201 h16 l6 6 v22 h-22 z"/>
+  <text x="60" y="212" font-size="14"><tspan class="sv-t">trip </tspan><tspan class="sv-a">report</tspan><tspan class="sv-t"> notes.txt</tspan></text>
+  <text class="sv-d" x="60" y="231" font-size="12">C:\Users\you\Desktop</text>
+  <text class="sv-d" x="740" y="231" font-size="12" text-anchor="end">2.1 KB     2026-10-09 18:40</text>
+  <!-- status -->
+  <text class="sv-d" x="16" y="257" font-size="12">3 results  0.9 ms</text>
+  <!-- badges -->
+  <g class="badge"><circle cx="736" cy="22" r="10"/><text x="736" y="27" text-anchor="middle">1</text></g>
+  <g class="badge"><circle cx="478" cy="78" r="10"/><text x="478" y="83" text-anchor="middle">2</text></g>
+  <g class="badge"><circle cx="16" cy="104" r="10"/><text x="16" y="109" text-anchor="middle">3</text></g>
+  <g class="badge"><circle cx="236" cy="116" r="10"/><text x="236" y="121" text-anchor="middle">4</text></g>
+  <g class="badge"><circle cx="290" cy="136" r="10"/><text x="290" y="141" text-anchor="middle">5</text></g>
+  <g class="badge"><circle cx="560" cy="136" r="10"/><text x="560" y="141" text-anchor="middle">6</text></g>
+  <g class="badge"><circle cx="140" cy="252" r="10"/><text x="140" y="257" text-anchor="middle">7</text></g>
+</svg>
+<figcaption><span class="label-schematic">Schematic</span>Drawn from the bar's form layout (760 by 46 pixel rows at 100% scaling), not a screenshot. File names and values are examples.</figcaption>
+</figure>
+<div class="tbl"><table>
+<tr><th>#</th><th>Part</th><th>Description</th></tr>
+<tr><td>1</td><td>Search box</td><td>Type the query here. The placeholder reads "Search files and folders". Results update as you type.</td></tr>
+<tr><td>2</td><td>Filter chips</td><td>Type, Modified, Size, In folder... and Sort. A chip turns blue and shows its value when its filter is in the query. See <a href="#bar-chips">Filter chips</a>.</td></tr>
+<tr><td>3</td><td>Result list</td><td>Up to 9 rows are visible, scroll for more. The bar loads up to 300 results per query. The selected row has a tinted background and an accent bar on the left.</td></tr>
+<tr><td>4</td><td>Name and match</td><td>The file icon, then the name. The matched part of the name is drawn in the accent color.</td></tr>
+<tr><td>5</td><td>Folder</td><td>The parent folder of the result, shortened in the middle when it is too long.</td></tr>
+<tr><td>6</td><td>Size and date</td><td>File size and last modified date and time, right aligned.</td></tr>
+<tr><td>7</td><td>Status line</td><td>Result count and search time, warnings, errors and the index state. See below.</td></tr>
+</table></div>
+<p>The bar opens centered on the monitor that holds the mouse pointer, in the upper part of the screen, and stays on top of other windows. It grows with the number of results and hides itself when it loses the focus (for example when you click another window). It follows the Windows light or dark app mode.</p>
+
+<h3 id="bar-rows">Result rows</h3>
+<p>The bar shows results as two-line rows, not as columns:</p>
+<div class="tbl"><table>
+<tr><th>Row type</th><th>Line 1</th><th>Line 2</th></tr>
+<tr><td>File or folder name match</td><td>Icon and name, matched part highlighted</td><td>Parent folder on the left, size and modified date on the right (no size for folders)</td></tr>
+<tr><td>Content match</td><td>Icon, file name and its folder</td><td><code>line N: </code> followed by the matching line, with the match highlighted. Long lines are cut so the match stays visible.</td></tr>
+</table></div>
+<p>The status line shows, from left to right:</p>
+<ul>
+  <li><i>No file name matches, showing matches inside files</i>, when the <a href="#c-fallback">content fallback</a> produced the results,</li>
+  <li>the number of results and the search time, for example <i>1,234 results  12.5 ms</i>. For name searches this is the total number of matches, even when only the first 300 are loaded,</li>
+  <li>a warning about the query, for example <i>invalid size: 10q</i>, or an error in red, for example for an invalid regular expression,</li>
+  <li>the index state while it is not ready, for example <i>Indexing... 1.2M files</i>.</li>
+</ul>
+
+<h3 id="bar-keys">Keyboard and mouse</h3>
+<div class="tbl"><table>
+<tr><th>Key</th><th>Action</th></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd></td><td>Show or hide the bar (global hotkey, configurable, with the fallbacks <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd>)</td></tr>
+<tr><td><kbd>Up</kbd>, <kbd>Down</kbd></td><td>Move the selection. When the search box is empty, or shows an entry recalled from the history, they step through the <a href="#bar-history">history</a> instead (<kbd>Up</kbd> older, <kbd>Down</kbd> newer).</td></tr>
+<tr><td><kbd>PgUp</kbd>, <kbd>PgDn</kbd></td><td>Move the selection one page (9 rows)</td></tr>
+<tr><td><kbd>Enter</kbd></td><td>Open the selected file or folder with its default program</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Show in folder: opens Explorer with the item selected</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td><td>Copy the selected file to the clipboard as a file, ready to paste in Explorer. Only when no text is selected in the search box, otherwise it copies the selected text as usual.</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd></td><td>Copy the full path of the selected item as text</td></tr>
+<tr><td><kbd>Tab</kbd></td><td>When the cursor is on an empty <code>in:</code> or <code>path:</code> token, open the <a href="#bar-folder">folder picker</a></td></tr>
+<tr><td><kbd>Esc</kbd></td><td>Hide the bar</td></tr>
+</table></div>
+<div class="tbl"><table>
+<tr><th>Mouse</th><th>Action</th></tr>
+<tr><td>Double-click a row</td><td>Open the item</td></tr>
+<tr><td>Right-click a row</td><td>Menu with <b>Open</b> (<kbd>Enter</kbd>), <b>Show in folder</b> (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>), <b>Copy file</b> (<kbd>Ctrl</kbd>+<kbd>C</kbd>) and <b>Copy path</b> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>)</td></tr>
+<tr><td>Click a chip</td><td>Open the chip menu. On an active chip, a click on the <b>&#215;</b> at its right end removes the filter.</td></tr>
+</table></div>
+<p>Open, Show in folder and Copy file feed the <a href="#r-frecency">frecency ranking</a>. Copy path does not.</p>
+
+<h3 id="bar-chips">Filter chips</h3>
+<p>The chips are a mouse friendly way to write filters. Each chip reads and writes one filter in the search box, so a filter you type by hand also lights up its chip. Choosing an option replaces the current value of that filter. <b>Remove filter</b>, at the bottom of the menu of an active chip, deletes it.</p>
+<div class="tbl"><table>
+<tr><th>Chip</th><th>Menu option</th><th>Writes into the query</th></tr>
+<tr><td rowspan="2">Type</td><td>Documents, Images, Videos, Audio, Code, Archives, Apps, Fonts</td><td><code>type:documents</code>, <code>type:images</code>, <code>type:videos</code>, <code>type:audio</code>, <code>type:code</code>, <code>type:archives</code>, <code>type:apps</code>, <code>type:fonts</code></td></tr>
+<tr><td>Folders</td><td><code>type:folders</code></td></tr>
+<tr><td>Modified</td><td>Today, Yesterday, Past week, Past month, Past year</td><td><code>mtime:today</code>, <code>mtime:yesterday</code>, <code>mtime:week</code>, <code>mtime:month</code>, <code>mtime:year</code></td></tr>
+<tr><td>Size</td><td>Empty, Under 1 MB, 1-100 MB, Over 100 MB, Over 1 GB</td><td><code>size:empty</code>, <code>size:&lt;1mb</code>, <code>size:1mb..100mb</code>, <code>size:&gt;100mb</code>, <code>size:&gt;1gb</code></td></tr>
+<tr><td>In folder...</td><td>Choose folder...</td><td><code>in:&lt;folder&gt;</code>, in double quotes when the path has spaces</td></tr>
+<tr><td>Sort</td><td>Relevance, Name, Size, Date</td><td>Relevance removes <code>sort:</code>. The others write <code>sort:name</code>, <code>sort:size</code>, <code>sort:date</code></td></tr>
+</table></div>
+<p>An active chip shows its value: the Type chip lists the categories (for example <i>Images, Code</i>), the In folder chip shows <i>In</i> and the folder name, and the Sort chip shows <i>Sort: Name</i>.</p>
+
+<h3 id="bar-history">History</h3>
+<p>The bar remembers your last 50 searches in <code>history.json</code> in the data folder. A search is added when the bar closes with text in the box, and when you copy a file or a path. Repeating a search moves it to the top instead of adding a duplicate.</p>
+<p>With an empty search box, press <kbd>Up</kbd> to recall the most recent search, and keep pressing <kbd>Up</kbd> for older ones. <kbd>Down</kbd> goes back toward the newest one and finally to an empty box. As soon as you edit the recalled text, the arrow keys move the selection again.</p>
+
+<h3 id="bar-folder">Folder picker</h3>
+<p>Two ways lead to the standard Windows folder dialog:</p>
+<ul>
+  <li>the <b>In folder...</b> chip, menu item <b>Choose folder...</b>, which sets the <code>in:</code> filter,</li>
+  <li>typing <code>in:</code> or <code>path:</code> and pressing <kbd>Tab</kbd> while the cursor is on that token. The chosen folder is inserted after the colon, in double quotes when it contains spaces.</li>
+</ul>
+</section>
+
+<!-- ============================================================ 5 -->
+<section class="chapter" id="query">
+<h2><span class="num">5</span>Query syntax</h2>
+<p>A query is a list of words and filters separated by spaces. Every word must match the name of the file or folder (not its path), case-insensitive. Filters have the form <code>key:value</code>. Only the keys listed in the <a href="#q-filters">filter reference</a> are filters: any other <code>text:text</code> token is searched as a plain word. The order of words and filters does not matter.</p>
+
+<h3 id="q-words">Words and modifiers</h3>
+<div class="tbl"><table>
+<tr><th>Syntax</th><th>Meaning</th><th>Example</th></tr>
+<tr><td><code>word</code></td><td>The name contains the word, case-insensitive. Tolerates one typo for words of 5 letters or more.</td><td><code>budget</code></td></tr>
+<tr><td><code>w1 w2</code></td><td>All words must match (AND).</td><td><code>budget 2026</code></td></tr>
+<tr><td><code>'exact</code></td><td>The whole name equals the word.</td><td><code>'readme.md</code></td></tr>
+<tr><td><code>^prefix</code></td><td>The name starts with the word.</td><td><code>^setup</code></td></tr>
+<tr><td><code>suffix$</code></td><td>The name ends with the word.</td><td><code>.bak$</code></td></tr>
+<tr><td><code>^both$</code></td><td>Same as <code>'exact</code>.</td><td><code>^desktop.ini$</code></td></tr>
+<tr><td><code>!word</code></td><td>Exclude names that match. Combines with the other modifiers.</td><td><code>!^tmp</code>, <code>!.log$</code></td></tr>
+<tr><td><code>"two words"</code></td><td>Double quotes keep spaces inside one word. Modifier characters inside quotes are taken literally.</td><td><code>"annual report"</code></td></tr>
+</table></div>
+<p>Matching is on the name only. To match folder names along the path, use <a href="#q-path">path tokens</a>, <code>in:</code> or <code>path:</code>.</p>
+
+<h3 id="q-typo">Typo tolerance</h3>
+<p>A plain word of 5 or more letters also matches a name that contains it with one error: one letter missing, one letter extra, one letter different, or two neighbour letters swapped. <code>confgi</code> finds <code>config.json</code>, <code>raport</code> finds <code>report.pdf</code>. Typo matches get the lowest <a href="#r-tiers">match tier</a>, so they normally rank below exact matches. Words shorter than 5 letters, and words with <code>'</code>, <code>^</code> or <code>$</code>, must match exactly.</p>
+
+<h3 id="q-path">Path tokens</h3>
+<p>A word that contains <code>\</code> or <code>/</code> is a path token. Its last part matches the name, and the earlier parts must match the names of ancestor folders, in that order, as substrings.</p>
+<div class="tbl"><table>
+<tr><th>Token</th><th>Finds</th></tr>
+<tr><td><code>src\main</code></td><td>Names containing <code>main</code> below a folder whose name contains <code>src</code></td></tr>
+<tr><td><code>photos\2026\beach</code></td><td>Names containing <code>beach</code> below a <code>2026</code> folder below a <code>photos</code> folder</td></tr>
+<tr><td><code>node_modules\</code></td><td>Anything below a folder whose name contains <code>node_modules</code></td></tr>
+<tr><td><code>docs/^intro</code></td><td>Forward slashes work too, and modifiers apply to the last part</td></tr>
+</table></div>
+
+<h3 id="q-filters">Filter reference</h3>
+<p>Filter keys are case-insensitive. Put the value in double quotes when it contains spaces, for example <code>in:"C:\My Projects"</code>.</p>
+<div class="tbl"><table>
+<tr><th>Filter</th><th>Value</th><th>Meaning</th><th>Examples</th></tr>
+<tr><td><code>ext:</code></td><td>Comma separated extensions, the dot is optional</td><td>Files with one of these extensions. Files only.</td><td><code>ext:pas,dfm</code>, <code>ext:.pdf</code></td></tr>
+<tr><td><code>type:</code></td><td>Comma separated <a href="#q-types">categories</a></td><td>Files of one of the categories (OR), or folders with <code>folders</code>.</td><td><code>type:images</code>, <code>type:code,documents</code></td></tr>
+<tr><td><code>kind:</code></td><td><code>file</code>, <code>files</code>, <code>dir</code>, <code>dirs</code>, <code>folder</code>, <code>folders</code></td><td>Only files or only folders.</td><td><code>kind:dir</code></td></tr>
+<tr><td><code>in:</code></td><td>A folder path, <code>~</code> for your user folder</td><td>Items inside that folder, at any depth. The folder itself is not a result. Repeat the filter to search several folders (OR).</td><td><code>in:C:\Projects</code>, <code>in:~\Downloads</code></td></tr>
+<tr><td><code>path:</code></td><td>Text</td><td>The full path contains the text, case-insensitive (<code>/</code> counts as <code>\</code>). Repeat it to require several texts (AND).</td><td><code>path:backup</code>, <code>path:\2026\</code></td></tr>
+<tr><td><code>size:</code></td><td>See <a href="#q-size">size values</a></td><td>File size. Files only, except <code>size:empty</code>, which also matches empty folders.</td><td><code>size:&gt;10mb</code>, <code>size:1mb..5mb</code></td></tr>
+<tr><td><code>mtime:</code></td><td>See <a href="#q-mtime">date values</a></td><td>Last modified time, in local time.</td><td><code>mtime:today</code>, <code>mtime:&lt;7d</code></td></tr>
+<tr><td><code>re:</code></td><td>A regular expression</td><td>The name matches the expression, case-insensitive.</td><td><code>re:^img_\d{4}\.jpg$</code></td></tr>
+<tr><td><code>limit:</code></td><td>A positive number</td><td>Maximum number of results. In the search bar, at most 300 are loaded.</td><td><code>limit:20</code></td></tr>
+<tr><td><code>sort:</code></td><td>See <a href="#q-sort">sort values</a></td><td>Result order. The default is by rank.</td><td><code>sort:date</code>, <code>sort:size-asc</code></td></tr>
+<tr><td><code>grep:</code></td><td>Text</td><td><a href="#content">Content search</a>: lines that contain the text.</td><td><code>grep:TODO</code>, <code>grep:"connection string"</code></td></tr>
+<tr><td><code>regex:</code></td><td>A regular expression</td><td>Content search: lines that match the expression.</td><td><code>regex:"TODO|FIXME"</code></td></tr>
+<tr><td><code>sym:</code></td><td>An identifier</td><td>Content search: definitions of a symbol in source files.</td><td><code>sym:TsgcFSearchEngine</code></td></tr>
+</table></div>
+<p>When a filter is given twice, <code>ext:</code> and <code>type:</code> add to the list, <code>in:</code> widens the scope, <code>path:</code>, <code>size:</code> and <code>mtime:</code> must all hold, and for <code>kind:</code>, <code>re:</code>, <code>limit:</code>, <code>sort:</code>, <code>grep:</code>, <code>regex:</code> and <code>sym:</code> the last one wins. If a query has more than one content filter, <code>grep:</code> is used first, then <code>regex:</code>, then <code>sym:</code>.</p>
+<p>An invalid value never stops the search. It is ignored and reported in the status line, for example <i>invalid size: 10q</i>, <i>unknown type: pics</i>, <i>invalid mtime: lastweek</i> or <i>empty value: ext:</i>.</p>
+
+<h3 id="q-home">The home folder <code>~</code></h3>
+<p>In <code>in:</code> values, and in the content folders and skip list of the settings, a leading <code>~</code> stands for your user folder (<code>%USERPROFILE%</code>, for example <code>C:\Users\you</code>). Use <code>~</code> alone or followed by a backslash: <code>in:~</code>, <code>in:~\Documents</code>.</p>
+
+<h3 id="q-size">Size values</h3>
+<p>Units are <code>b</code> (default), <code>k</code>, <code>kb</code>, <code>kib</code>, <code>m</code>, <code>mb</code>, <code>mib</code>, <code>g</code>, <code>gb</code>, <code>gib</code>, <code>t</code>, <code>tb</code>, <code>tib</code>, all 1024 based. Decimals are allowed: <code>size:&gt;1.5g</code>.</p>
+<div class="tbl"><table>
+<tr><th>Value</th><th>Meaning</th></tr>
+<tr><td><code>size:&gt;10mb</code></td><td>Larger than 10 MB</td></tr>
+<tr><td><code>size:&gt;=2g</code></td><td>2 GB or larger</td></tr>
+<tr><td><code>size:&lt;1k</code></td><td>Smaller than 1 KB</td></tr>
+<tr><td><code>size:&lt;=4kb</code></td><td>4 KB or smaller</td></tr>
+<tr><td><code>size:10k</code>, <code>size:=10k</code></td><td>Exactly 10 KB (10,240 bytes)</td></tr>
+<tr><td><code>size:1mb..5mb</code></td><td>Between 1 MB and 5 MB, both included. One side may be left out: <code>size:100mb..</code></td></tr>
+<tr><td><code>size:empty</code></td><td>Empty files (0 bytes) and empty folders</td></tr>
+</table></div>
+
+<h3 id="q-mtime">Date values</h3>
+<p>Dates use your local time zone. Dates are written <code>YYYY-MM-DD</code>. Relative ages use the units <code>h</code> (hours), <code>d</code> (days, the default), <code>w</code> (weeks) and <code>y</code> (365 days).</p>
+<div class="tbl"><table>
+<tr><th>Value</th><th>Meaning</th></tr>
+<tr><td><code>mtime:today</code></td><td>Modified today, since midnight</td></tr>
+<tr><td><code>mtime:yesterday</code></td><td>Modified yesterday</td></tr>
+<tr><td><code>mtime:week</code></td><td>The last 7 days, today included</td></tr>
+<tr><td><code>mtime:month</code></td><td>The last 30 days, today included</td></tr>
+<tr><td><code>mtime:year</code></td><td>The last 365 days, today included</td></tr>
+<tr><td><code>mtime:&lt;7d</code></td><td>Newer than 7 days (a bare <code>mtime:7d</code> means the same)</td></tr>
+<tr><td><code>mtime:&gt;30d</code></td><td>Older than 30 days</td></tr>
+<tr><td><code>mtime:&lt;12h</code>, <code>mtime:&gt;2w</code>, <code>mtime:&gt;1y</code></td><td>Newer than 12 hours, older than 2 weeks, older than a year</td></tr>
+<tr><td><code>mtime:&gt;2026-01-01</code></td><td>After that day (from 2026-01-02)</td></tr>
+<tr><td><code>mtime:&gt;=2026-01-01</code></td><td>On or after that day</td></tr>
+<tr><td><code>mtime:&lt;2026-01-01</code></td><td>Before that day</td></tr>
+<tr><td><code>mtime:&lt;=2026-01-01</code></td><td>On or before that day</td></tr>
+<tr><td><code>mtime:2026-10-03</code>, <code>mtime:=2026-10-03</code></td><td>On that day</td></tr>
+<tr><td><code>mtime:2026-10-01..2026-10-31</code></td><td>From the first day to the last day, both included</td></tr>
+</table></div>
+
+<h3 id="q-sort">Sort values</h3>
+<div class="tbl"><table>
+<tr><th>Value</th><th>Order</th></tr>
+<tr><td><code>sort:rank</code> (also <code>sort:score</code>)</td><td>Best match first. This is the default. The direction suffixes do not apply.</td></tr>
+<tr><td><code>sort:name</code></td><td>Name, A to Z</td></tr>
+<tr><td><code>sort:size</code></td><td>Largest first. Folders are sorted by the total size of their contents.</td></tr>
+<tr><td><code>sort:date</code> (also <code>sort:mtime</code>)</td><td>Newest first</td></tr>
+<tr><td><code>sort:size-asc</code>, <code>sort:name-desc</code></td><td>The suffix <code>-asc</code> or <code>-desc</code> forces the direction</td></tr>
+<tr><td><code>sort:-date</code>, <code>sort:-name</code></td><td>A leading <code>-</code> reverses the default: oldest first, Z to A</td></tr>
+</table></div>
+<p>Items with the same name, size or date keep their rank order.</p>
+
+<h3 id="q-types">Type categories</h3>
+<p><code>type:</code> accepts the category names below, and the alternative spellings in brackets. Several categories are combined with commas.</p>
+<div class="tbl"><table>
+<tr><th>Category</th><th>Extensions</th></tr>
+<tr><td><code>documents</code> (document, docs)</td><td>txt md pdf doc docx odt rtf xls xlsx ods csv ppt pptx odp epub tex pages numbers key xps</td></tr>
+<tr><td><code>images</code> (image, pictures)</td><td>jpg jpeg png gif bmp tif tiff webp heic heif svg ico psd raw cr2 nef arw dng avif</td></tr>
+<tr><td><code>videos</code> (video)</td><td>mp4 mkv avi mov wmv flv webm m4v mpg mpeg 3gp mts m2ts vob</td></tr>
+<tr><td><code>audio</code> (music)</td><td>mp3 wav flac aac ogg m4a wma opus aiff aif mid midi ape</td></tr>
+<tr><td><code>code</code> (source)</td><td>pas dpr dpk dfm fmx inc c h cpp hpp cc cxx cs java js mjs ts tsx jsx py rb go rs php swift kt kts scala sh bat cmd ps1 psm1 lua pl sql html htm css scss less json xml yaml yml toml ini vb m mm dart r</td></tr>
+<tr><td><code>archives</code> (archive)</td><td>zip rar 7z tar gz tgz bz2 xz zst cab iso lz lzma jar</td></tr>
+<tr><td><code>apps</code> (app, executables)</td><td>exe msi msix appx appxbundle com scr lnk</td></tr>
+<tr><td><code>fonts</code> (font)</td><td>ttf otf woff woff2 fon fnt eot</td></tr>
+<tr><td><code>folders</code> (folder, dirs, dir)</td><td>Folders, not files</td></tr>
+</table></div>
+
+<h3 id="q-examples">Worked examples</h3>
+<div class="tbl"><table>
+<tr><th>Query</th><th>Finds</th></tr>
+<tr><td><code>report ext:pdf mtime:month</code></td><td>PDF files with "report" in the name, modified in the last 30 days</td></tr>
+<tr><td><code>^setup ext:exe in:~\Downloads</code></td><td>Executables in your Downloads folder whose name starts with "setup"</td></tr>
+<tr><td><code>'package.json !node_modules\</code></td><td>Files named exactly package.json that are not inside a node_modules folder</td></tr>
+<tr><td><code>type:videos size:&gt;1gb sort:size</code></td><td>Videos over 1 GB, largest first</td></tr>
+<tr><td><code>kind:dir ^backup</code></td><td>Folders whose name starts with "backup"</td></tr>
+<tr><td><code>type:folders size:empty in:C:\Projects</code></td><td>Empty folders below C:\Projects</td></tr>
+<tr><td><code>invoice "march 2026"</code></td><td>Names containing "invoice" and "march 2026"</td></tr>
+<tr><td><code>type:images mtime:2026-08-01..2026-08-31 path:holiday</code></td><td>Pictures modified in August 2026 with "holiday" anywhere in the path</td></tr>
+<tr><td><code>re:^IMG_\d+\.jpe?g$ sort:-date</code></td><td>Camera pictures, oldest first</td></tr>
+<tr><td><code>.log$ size:&gt;100mb mtime:&gt;30d</code></td><td>Large log files not touched for a month</td></tr>
+<tr><td><code>src\main ext:cpp,h</code></td><td>C++ files with "main" in the name below a "src" folder</td></tr>
+<tr><td><code>ext:dproj in:C:\Projects in:D:\Work</code></td><td>Delphi projects in either folder</td></tr>
+<tr><td><code>config limit:10 sort:name</code></td><td>The best 10 matches for "config", shown in name order</td></tr>
+<tr><td><code>grep:TODO ext:pas in:~\Projects</code></td><td>Lines with "TODO" in Pascal files of your Projects folder</td></tr>
+<tr><td><code>sym:ParseQuery</code></td><td>Where <code>ParseQuery</code> is defined in your source files</td></tr>
+</table></div>
+</section>
+
+<!-- ============================================================ 6 -->
+<section class="chapter" id="content">
+<h2><span class="num">6</span>Content search</h2>
+
+<h3 id="c-what">What is indexed</h3>
+<p>Content search looks inside files that are located below the <b>content folders</b>. The default content folder is <code>~</code>, your user folder. Change the list in the <a href="#folders">Folders dialog</a> or in the <code>roots</code> key of <a href="#cfg-json">config.json</a>.</p>
+<p>When the name index is ready, a background thread at low priority reads the files below the content folders and builds a trigram index of their text in <code>content.idx</code>. After a restart, only files whose size or modified time changed are read again. While the app runs, changed files are queued and read again automatically.</p>
+
+<h3 id="c-formats">File formats</h3>
+<div class="tbl"><table>
+<tr><th>Format</th><th>Extensions</th><th>How the text is read</th></tr>
+<tr><td>Plain text and source code</td><td>A built-in list of text and source code extensions, for example txt md log csv ini json xml html css js ts pas dfm c cpp h cs java py go rs sql ps1 bat yaml toml svg sln dproj</td><td>Read directly. Byte order marks (UTF-8, UTF-16 LE and BE) are honoured, valid UTF-8 without a mark is detected, anything else is read as Windows-1252.</td></tr>
+<tr><td>Other extensions</td><td>Any extension not in the text or binary lists</td><td>The first 4 KB are checked. The file is treated as text when they hold no NUL byte (or start with a UTF-16 mark).</td></tr>
+<tr><td>Word, Excel, PowerPoint (OOXML)</td><td>docx docm dotx dotm, xlsx xlsm xltx xltm, pptx pptm potx ppsx</td><td>Built-in reader. Office does not need to be installed.</td></tr>
+<tr><td>OpenDocument</td><td>odt ods odp ott ots otp</td><td>Built-in reader.</td></tr>
+<tr><td>PDF, legacy Office, RTF</td><td>pdf doc xls ppt rtf</td><td>Through the Windows IFilter registered for the extension, with a budget of 10 seconds per file. Without a registered IFilter the file is not content indexed.</td></tr>
+<tr><td>Binary files</td><td>exe dll obj zip 7z jpg png mp3 mp4 db iso and other known binary types</td><td>Never read.</td></tr>
+</table></div>
+
+<h3 id="c-limits">Limits and exclusions</h3>
+<ul>
+  <li><b>Size cap.</b> Files larger than <code>content_max_size_mb</code> (default 16 MB) are not content indexed.</li>
+  <li><b>Cloud files.</b> Online-only files from OneDrive and other cloud providers (offline or recall-on-access placeholders) are never opened, because opening them would download them.</li>
+  <li><b>Skip list.</b> Nothing below a folder in the skip list is indexed, neither names nor content.</li>
+  <li><b>Links and denied folders.</b> Junctions, symbolic links and mount points are not followed. Folders that cannot be opened (access denied) are left out.</li>
+  <li><b>Excluded folder names.</b> Files inside folders with these names are never read for content (their names are still searchable):</li>
+</ul>
+<pre><code>node_modules  .git  .svn  .hg  .bzr  obj  .vs  .idea  __pycache__  .gradle
+bower_components  $Recycle.Bin  AppData  .nuget  .npm  .yarn  .cache  .tox
+.venv  venv  .mypy_cache  .pytest_cache  __history  __recovery  .terraform
+System Volume Information  .next  .nuxt  .angular  .parcel-cache  .dart_tool
+.pub-cache  .m2  .cargo  .rustup</code></pre>
+
+<h3 id="c-modes">Search modes</h3>
+<div class="tbl"><table>
+<tr><th>Mode</th><th>Query filter</th><th>Pipe <code>mode</code></th><th>A line matches when</th></tr>
+<tr><td>Literal</td><td><code>grep:&lt;text&gt;</code></td><td><code>literal</code></td><td>it contains the text</td></tr>
+<tr><td>Regular expression</td><td><code>regex:&lt;pattern&gt;</code></td><td><code>regex</code></td><td>it matches the pattern (one line at a time)</td></tr>
+<tr><td>Symbol</td><td><code>sym:&lt;name&gt;</code></td><td><code>sym</code></td><td>it looks like a definition of the name, see <a href="#c-sym">Symbol search</a></td></tr>
+<tr><td>Words</td><td>(used by the <a href="#c-fallback">fallback</a>)</td><td><code>words</code></td><td>the file holds every word, and the line holds at least one of them</td></tr>
+</table></div>
+<p><b>Smart-case.</b> Content search is case-insensitive, unless the pattern contains an uppercase letter: then it is case-sensitive. <code>grep:todo</code> finds "TODO" and "todo", <code>grep:TODO</code> finds only "TODO". In <code>regex:</code> and <code>sym:</code>, escaped sequences such as <code>\W</code> do not count as uppercase.</p>
+<p><b>Results.</b> Each hit line is one result, with the file, the line number and the line text. Up to 5 lines are reported per file, and the limit counts lines, not files. Every candidate file is read again at search time to confirm the match, so results never come from stale index data. In the bar, content rows show <code>line N:</code> and the text.</p>
+<div class="tip"><b>Tip.</b> Quote patterns with spaces: <code>grep:"connection string"</code>, <code>regex:"class \w+Helper"</code>.</div>
+
+<h3 id="c-sym">Symbol search</h3>
+<p><code>sym:Name</code> finds lines that define <code>Name</code>. It recognises these patterns, which cover Pascal and Delphi, C, C++, C#, Java, JavaScript, TypeScript, Python, Go, Rust, Swift, Kotlin and similar languages:</p>
+<div class="tbl"><table>
+<tr><th>Pattern</th><th>Examples</th></tr>
+<tr><td>A definition keyword, then the name, optionally qualified: <code>function</code>, <code>procedure</code>, <code>constructor</code>, <code>destructor</code>, <code>def</code>, <code>class</code>, <code>fn</code>, <code>func</code>, <code>interface</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>impl</code>, <code>type</code>, <code>record</code>, <code>module</code>, <code>namespace</code>, <code>const</code>, <code>let</code>, <code>var</code></td><td><code>procedure TMyForm.Name(</code>, <code>def Name(</code>, <code>class Name:</code>, <code>fn Name(</code>, <code>const Name =</code></td></tr>
+<tr><td>A Pascal type declaration</td><td><code>Name = class(TObject)</code>, <code>Name = packed record</code>, <code>Name = interface</code></td></tr>
+<tr><td>A Go method</td><td><code>func (s *Server) Name(</code></td></tr>
+<tr><td>A C style declaration at the start of a line: a return type, then the name and <code>(</code></td><td><code>static int Name(</code>, <code>public void Name(</code>, <code>std::string Name(</code></td></tr>
+</table></div>
+<p>Calls such as <code>return Name(</code> or <code>if Name(</code> are not reported as definitions.</p>
+
+<h3 id="c-combine">Combining with name filters</h3>
+<p>Name filters also apply to content results: <code>grep:TODO ext:pas in:~\Projects</code> searches only Pascal files below that folder. Plain words in a query with a content filter must also appear in the file name: <code>grep:TODO engine</code> searches for "TODO" only in files whose name contains "engine".</p>
+
+<h3 id="c-fallback">Automatic fallback</h3>
+<p>When a query has plain words and no content filter, and no file or folder name matches, sgcFSearch searches the content instead: it looks for files below the content folders that contain every word, and reports the lines that contain any of them. Name filters still apply. The bar then shows <i>No file name matches, showing matches inside files</i>, and the pipe response has <code>"content":true</code>.</p>
+</section>
+
+<!-- ============================================================ 7 -->
+<section class="chapter" id="ranking">
+<h2><span class="num">7</span>Ranking</h2>
+
+<h3 id="r-tiers">Match quality</h3>
+<p>Each word gets a quality tier for each name. With several words, the weakest word decides the tier of the result.</p>
+<div class="tbl"><table>
+<tr><th>Tier</th><th>Quality</th><th>Example for the word <code>report</code></th></tr>
+<tr><td>5</td><td>Exact: the whole name</td><td><code>report</code></td></tr>
+<tr><td>4</td><td>Prefix: the name starts with the word</td><td><code>report-2026.pdf</code></td></tr>
+<tr><td>3</td><td>Word start: the word starts after a separator such as <code>.</code> <code>_</code> <code>-</code> or a space, at a letter and digit change, or at a camelCase step</td><td><code>annual_report.pdf</code>, <code>AnnualReport.docx</code></td></tr>
+<tr><td>2</td><td>Substring anywhere in the name</td><td><code>myreports.txt</code></td></tr>
+<tr><td>1</td><td>Typo match (one error)</td><td><code>raport.pdf</code></td></tr>
+</table></div>
+
+<h3 id="r-score">The score</h3>
+<p>With the default <code>sort:rank</code>, results are ordered by a score:</p>
+<pre><code>score = 100 x tier
+      - 2 x folder depth (depth counted up to 40)
+      + usage bonus (0 to 60, see Frecency)
+      + 1 when the first word matches with the exact letter case</code></pre>
+<p>The tier dominates: one tier is worth 100 points, while the depth penalty is at most 80 and the usage bonus at most 60. Items closer to the drive root rank above deeply nested ones, and files you use often move up. Ties go to the shorter name. The other sort orders use their own field first and the score to break ties.</p>
+
+<h3 id="r-frecency">Frecency</h3>
+<p>sgcFSearch remembers the files you open and copy, in <code>usage.json</code> in the data folder. Each use adds a weight that halves every 14 days:</p>
+<div class="tbl"><table>
+<tr><th>Action</th><th>Weight</th></tr>
+<tr><td>Open (<kbd>Enter</kbd>, double-click, Open menu), Show in folder, a pipe <code>use</code> request with <code>"kind":"open"</code></td><td>1.0</td></tr>
+<tr><td>Copy file (<kbd>Ctrl</kbd>+<kbd>C</kbd>), a pipe <code>use</code> request with <code>"kind":"copy"</code></td><td>0.7</td></tr>
+</table></div>
+<p>The usage bonus is <code>10 x ln(1 + sum of the decayed weights)</code>, capped at 60. A file used often and recently gets a large bonus, one used long ago fades out. Up to 4,000 paths are remembered, the lowest scores are dropped first. Copy path does not count as a use.</p>
+<p>See <a href="#q-sort">Sort values</a> for the other orders.</p>
+</section>
+
+<!-- ============================================================ 8 -->
+<section class="chapter" id="tray">
+<h2><span class="num">8</span>Tray menu and settings</h2>
+
+<h3 id="tray-menu">Tray icon and menu</h3>
+<p>The tray icon tooltip shows the state, for example <i>sgcFSearch: Ready, 3,404,349 files, 447,577 folders</i>, with <i>, N files being read</i> added while the content indexer works. A left click opens the search bar. A right click opens the menu:</p>
+<div class="tbl"><table>
+<tr><th>Item</th><th>Action</th></tr>
+<tr><td>(status line)</td><td>The same text as the tooltip, for information only</td></tr>
+<tr><td><b>Search</b> (default item)</td><td>Opens the search bar. The active hotkey is shown next to it.</td></tr>
+<tr><td><b>Folders...</b></td><td>Opens the <a href="#folders">Folders dialog</a></td></tr>
+<tr><td><b>Start at login</b></td><td>Check mark: sgcFSearch starts when you sign in. Click to switch it on or off.</td></tr>
+<tr><td><b>Open log</b></td><td>Opens <code>daemon.log</code> with the program associated with <code>.log</code> files</td></tr>
+<tr><td><b>Quit</b></td><td>Saves the index and exits</td></tr>
+</table></div>
+
+<h3 id="folders">Folders dialog</h3>
+<p>The dialog <b>sgcFSearch Folders</b> edits the settings in <code>config.json</code>.</p>
+<div class="tbl"><table>
+<tr><th>Field</th><th>Description</th><th>config.json key</th></tr>
+<tr><td>Content folders (the text of their files is indexed)</td><td>Folders whose files are read for <a href="#content">content search</a>. <b>Add...</b> picks a folder, <b>Remove</b> deletes the selected one.</td><td><code>roots</code></td></tr>
+<tr><td>Skip folders (never indexed)</td><td>Folders the crawler never opens. Nothing below them appears in results.</td><td><code>skip</code></td></tr>
+<tr><td>Drives (none checked = all fixed drives)</td><td>Check the drives to index. With no drive checked, every fixed drive is indexed.</td><td><code>drives</code></td></tr>
+<tr><td>Search bar hotkey (for example Alt+Shift+Space)</td><td>One or more modifiers (<code>Ctrl</code>, <code>Alt</code>, <code>Shift</code>, <code>Win</code>) and one key (<code>A</code> to <code>Z</code>, <code>0</code> to <code>9</code>, <code>F1</code> to <code>F24</code>, <code>Space</code>), joined with <code>+</code>. An invalid entry is rejected with a message.</td><td><code>hotkey</code></td></tr>
+</table></div>
+<p><b>OK</b> saves the settings and restarts sgcFSearch in the background to apply them. <b>Cancel</b> closes the dialog without changes. The content size cap is not in the dialog, edit <code>content_max_size_mb</code> in <a href="#cfg-json">config.json</a> instead.</p>
+
+<h3 id="login">Start at login</h3>
+<p>Start at login writes the value <code>sgcFSearch</code> = <code>"&lt;path&gt;\sgcFSearch.exe" --background</code> under <code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code>. At sign-in the app starts in the tray without showing the bar. Three places control the same entry: the tray menu item, the start at login task of the setup, and <code>sgcfs install --login</code> / <code>sgcfs uninstall</code> for the manual installation.</p>
+</section>
+
+<!-- ============================================================ 9 -->
+<section class="chapter" id="config">
+<h2><span class="num">9</span>Configuration reference</h2>
+
+<h3 id="cfg-files">Data folder and files</h3>
+<p>All data lives in <code>%LOCALAPPDATA%\sgcFSearch</code> (for example <code>C:\Users\you\AppData\Local\sgcFSearch</code>), unless <code>SGCFSEARCH_HOME</code> points elsewhere. The folder is created when needed.</p>
+<div class="tbl"><table>
+<tr><th>File</th><th>Content</th></tr>
+<tr><td><code>config.json</code></td><td>Settings. Defaults are used when it is missing.</td></tr>
+<tr><td><code>names.idx</code></td><td>The name index with the change journal position of each drive. Saved every 5 minutes when something changed, and on exit.</td></tr>
+<tr><td><code>content.idx</code></td><td>The trigram content index of the content folders. Saved with <code>names.idx</code>.</td></tr>
+<tr><td><code>usage.json</code></td><td>Open and copy history for the frecency ranking (up to 4,000 paths)</td></tr>
+<tr><td><code>history.json</code></td><td>The last 50 searches of the search bar</td></tr>
+<tr><td><code>daemon.log</code></td><td>The log. At 2 MB it is renamed to <code>daemon.log.old</code> and a new one starts.</td></tr>
+</table></div>
+
+<h3 id="cfg-json">config.json</h3>
+<p>A file with every key at its default value:</p>
+<pre><code>{
+  "roots": ["~"],
+  "skip": [],
+  "hotkey": "Alt+Shift+Space",
+  "drives": [],
+  "content_max_size_mb": 16
+}</code></pre>
+<div class="tbl"><table>
+<tr><th>Key</th><th>Type</th><th>Default</th><th>Meaning</th></tr>
+<tr><td><code>roots</code></td><td>array of strings</td><td><code>["~"]</code></td><td>Content folders, whose files are indexed for <code>grep:</code>, <code>regex:</code> and <code>sym:</code>. <code>~</code> is your user folder.</td></tr>
+<tr><td><code>skip</code></td><td>array of strings</td><td><code>[]</code></td><td>Folders the crawler never opens. <code>~</code> is allowed.</td></tr>
+<tr><td><code>hotkey</code></td><td>string</td><td><code>"Alt+Shift+Space"</code></td><td>Global hotkey of the search bar: modifiers <code>Ctrl</code> (or <code>Control</code>), <code>Alt</code>, <code>Shift</code>, <code>Win</code> (or <code>Windows</code>) plus a letter, a digit, <code>F1</code> to <code>F24</code> or <code>Space</code>. Case and spaces are ignored.</td></tr>
+<tr><td><code>drives</code></td><td>array of strings</td><td><code>[]</code></td><td>Drives to index, for example <code>["C:\\", "D:\\"]</code>. Empty means every fixed drive.</td></tr>
+<tr><td><code>content_max_size_mb</code></td><td>number</td><td><code>16</code></td><td>Files larger than this many MB are not content indexed.</td></tr>
+</table></div>
+<div class="note"><b>Note.</b> Backslashes must be doubled in JSON: <code>"C:\\Projects"</code>. The app reads <code>config.json</code> when it starts. After editing the file by hand, restart the app: <code>sgcfs stop</code>, then start sgcFSearch again. The Folders dialog restarts it for you.</div>
+
+<h3 id="cfg-env">Environment variables</h3>
+<div class="tbl"><table>
+<tr><th>Variable</th><th>Effect</th></tr>
+<tr><td><code>SGCFSEARCH_HOME</code></td><td>Replaces the data folder. Used by the tests, and useful to keep a separate index, for example on another disk.</td></tr>
+<tr><td><code>SGCFSEARCH_PIPE</code></td><td>Replaces the pipe name. A value that does not start with <code>\\</code> gets the prefix <code>\\.\pipe\</code>. The app and every client must see the same value.</td></tr>
+</table></div>
+</section>
+
+<!-- ============================================================ 10 -->
+<section class="chapter" id="cli">
+<h2><span class="num">10</span>Command line (sgcfs)</h2>
+<p><code>sgcfs</code> talks to the running app through the pipe. A search, <code>show</code>, <code>stdio</code> and <code>bench</code> start <code>sgcFSearch.exe --background</code> from the folder of <code>sgcfs.exe</code> when the app is not running, print <i>sgcfs: starting sgcFSearch...</i> and wait up to 15 seconds for it to answer. <code>status</code> and <code>stop</code> never start it.</p>
+
+<h3 id="cli-commands">Commands and options</h3>
+<div class="tbl"><table>
+<tr><th>Command</th><th>Description</th></tr>
+<tr><td><code>sgcfs &lt;words...&gt; [-n &lt;limit&gt;] [-l|--long] [--json]</code></td><td>Search. The words form one query with the full <a href="#query">query syntax</a>.</td></tr>
+<tr><td><code>sgcfs -- &lt;words...&gt;</code></td><td>Search for words that look like commands or options, for example <code>sgcfs -- status</code></td></tr>
+<tr><td><code>sgcfs stdio</code></td><td>JSON lines bridge: each line read from stdin is sent to the pipe, each response is written to stdout</td></tr>
+<tr><td><code>sgcfs status</code></td><td>State, version, process id, file and folder counts, content counters, indexed roots and the log file</td></tr>
+<tr><td><code>sgcfs stop</code></td><td>Stop the app. It saves its index first. Waits up to 5 seconds and prints <i>sgcFSearch stopped</i>, or <i>sgcFSearch is stopping (saving the index)</i> if it is still busy.</td></tr>
+<tr><td><code>sgcfs show [text]</code></td><td>Open the search bar, optionally with the text already typed</td></tr>
+<tr><td><code>sgcfs install [--login]</code></td><td>Add the folder of <code>sgcfs.exe</code> to the user PATH. <code>--login</code> also makes sgcFSearch start at login.</td></tr>
+<tr><td><code>sgcfs uninstall</code></td><td>Remove the login entry and the PATH entry</td></tr>
+<tr><td><code>sgcfs bench [n]</code></td><td>Run a fixed set of five queries n times (default 20) over one connection and print the median server time, round trip time and result count of each. It loads the machine while it runs.</td></tr>
+<tr><td><code>sgcfs help</code></td><td>Print the usage. <code>-h</code>, <code>--help</code>, <code>/?</code> and running <code>sgcfs</code> without arguments do the same. Help never starts the app.</td></tr>
+</table></div>
+<div class="tbl"><table>
+<tr><th>Option</th><th>Description</th></tr>
+<tr><td><code>-n &lt;limit&gt;</code></td><td>Maximum number of results. Default 100. Must be a positive number. A <code>limit:</code> filter in the query wins.</td></tr>
+<tr><td><code>-l</code>, <code>--long</code></td><td>Long format: size (or <code>&lt;DIR&gt;</code>), modified time in local time (<code>yyyy-mm-dd hh:nn</code>) and path</td></tr>
+<tr><td><code>--json</code></td><td>Print the raw JSON response line instead of the paths</td></tr>
+</table></div>
+<p>A query given as one argument, such as <code>sgcfs "notepad ext:exe"</code>, is used exactly as typed, while with several arguments an argument that contains spaces stays one phrase, as in <code>sgcfs "annual report" in:~\Documents</code>. <code>sgcfs show</code> follows the same rule.</p>
+
+<h3 id="cli-output">Output and exit codes</h3>
+<ul>
+  <li>Results go to stdout, one path per line. Folders end with <code>\</code>. Content hits are printed as <code>path:line: text</code>.</li>
+  <li>The summary goes to stderr: <i>N results (x ms)</i>, or <i>N results, M shown (x ms)</i> when the limit cut the list. Messages and errors also go to stderr, so piping stdout gives clean paths.</li>
+</ul>
+<div class="tbl"><table>
+<tr><th>Exit code</th><th>Meaning</th></tr>
+<tr><td>0</td><td>Results found, or the command succeeded</td></tr>
+<tr><td>1</td><td>No results</td></tr>
+<tr><td>2</td><td>Error, invalid arguments, or the app is not running and could not be started</td></tr>
+</table></div>
+
+<h3 id="cli-examples">Examples</h3>
+<pre><code>sgcfs report ext:pdf mtime:month
+sgcfs -l -n 20 type:videos size:&gt;1gb sort:size
+sgcfs "annual report" in:~\Documents
+sgcfs grep:TODO ext:pas in:~\Projects
+sgcfs sym:ParseQuery -n 5
+sgcfs show ext:log mtime:today
+sgcfs status
+sgcfs stop</code></pre>
+<p>Use the output in other commands, for example in PowerShell:</p>
+<pre><code>sgcfs ext:tmp in:~\AppData\Local\Temp mtime:&gt;30d | Measure-Object
+sgcfs 'package.json !node_modules\ | ForEach-Object { Split-Path $_ }</code></pre>
+<p><code>sgcfs status</code> prints one value per line (example values):</p>
+<pre><code>state            ready
+version          1.0.0
+pid              12345
+files            3,404,349
+folders          447,577
+crawled          3,851,926
+content pending  0
+content indexed  36,000
+roots            C:\, D:\
+log              C:\Users\you\AppData\Local\sgcFSearch\daemon.log</code></pre>
+<p><code>sgcfs bench</code> prints a table with the columns <i>query</i>, <i>server ms</i>, <i>round trip</i> and <i>results</i> for the queries <i>one word</i> (<code>config</code>), <i>typo</i> (<code>confgi</code>), <i>two words</i> (<code>system config</code>), <i>filtered</i> (<code>config ext:json,xml</code>) and <i>content grep</i> (<code>TODO</code> in pas, txt and md files).</p>
+
+<h3 id="cli-stdio">JSON and stdio mode</h3>
+<p><code>--json</code> prints the response of a search exactly as the pipe returns it (see <a href="#pipe-ops">Requests</a>). The summary still goes to stderr.</p>
+<pre><code>sgcfs --json -n 2 report ext:pdf</code></pre>
+<pre><code>{"ok":true,"total":57,"ms":3.1,"content":false,"results":[{"path":"C:\\Users\\you\\Documents\\report.pdf","name":"report.pdf","dir":false,"size":48211,"mtime":"2026-10-28T08:14:00Z","score":503,"match":[0,6]}, ...]}</code></pre>
+<p><code>sgcfs stdio</code> keeps one pipe connection open, sends every non-empty line of stdin as a request and writes every response line to stdout. It is the easiest way to use the <a href="#pipe">pipe API</a> from a script that cannot open named pipes:</p>
+<pre><code>echo {"id":1,"status":true} | sgcfs stdio</code></pre>
+</section>
+
+<!-- ============================================================ 11 -->
+<section class="chapter" id="pipe">
+<h2><span class="num">11</span>Pipe API (JSON lines)</h2>
+
+<h3 id="pipe-conn">Connection and security</h3>
+<div class="tbl"><table>
+<tr><th>Item</th><th>Value</th></tr>
+<tr><td>Pipe name</td><td><code>\\.\pipe\sgcFSearch-&lt;SID&gt;</code>, where <code>&lt;SID&gt;</code> is the security identifier of the current user, for example <code>S-1-5-21-...-1001</code>. <code>SGCFSEARCH_PIPE</code> overrides it.</td></tr>
+<tr><td>Access</td><td>The pipe has a protected access list that grants access to the current user only. Remote clients are rejected, so only programs of the same user on the same PC can connect.</td></tr>
+<tr><td>Framing</td><td>Byte mode, UTF-8. One JSON object per line, ended by <code>\n</code> (<code>\r\n</code> is accepted). A line may be up to 16 MB.</td></tr>
+<tr><td>Sessions</td><td>A connection may send many requests. Each request gets exactly one response line, in order.</td></tr>
+<tr><td>Request id</td><td>Every request may carry an <code>"id"</code> (any JSON value). The response echoes it.</td></tr>
+</table></div>
+
+<h3 id="pipe-ops">Requests</h3>
+<h4>Search</h4>
+<p><code>q</code> is a query with the full <a href="#query">syntax</a>. <code>limit</code> is optional, default 100. A <code>limit:</code> filter inside the query wins. The <a href="#c-fallback">content fallback</a> applies too.</p>
+<pre><code>{"id":1,"q":"report ext:pdf","limit":50}</code></pre>
+<pre><code>{"id":1,"ok":true,"total":1234,"ms":0.8,"content":false,"results":[
+ {"path":"C:\\Docs\\report.pdf","name":"report.pdf","dir":false,"size":12345,
+  "mtime":"2026-11-03T10:15:00Z","score":512.0,"match":[0,6]}]}</code></pre>
+<div class="tbl"><table>
+<tr><th>Field</th><th>Meaning</th></tr>
+<tr><td><code>total</code></td><td>Name results: the number of matches, also when <code>limit</code> returns fewer rows. Content results: the number of hit lines found, up to the limit.</td></tr>
+<tr><td><code>ms</code></td><td>Search time in the app, in milliseconds</td></tr>
+<tr><td><code>content</code></td><td><code>true</code> when the results are content hits</td></tr>
+<tr><td><code>path</code>, <code>name</code>, <code>dir</code></td><td>Full path, name, and <code>true</code> for folders</td></tr>
+<tr><td><code>size</code></td><td>Size in bytes. For folders only with <code>sort:size</code> (the folder total), otherwise left out.</td></tr>
+<tr><td><code>mtime</code></td><td>Last modified time, ISO 8601 in UTC</td></tr>
+<tr><td><code>score</code></td><td>Ranking score (name results only)</td></tr>
+<tr><td><code>match</code></td><td><code>[position, length]</code> of the match in <code>name</code>, 0 based. Left out when there is none.</td></tr>
+<tr><td><code>line</code>, <code>text</code>, <code>tmatch</code></td><td>Content results only: line number, line text and <code>[position, length]</code> of the match in <code>text</code>, 0 based. One result per hit line.</td></tr>
+</table></div>
+
+<h4>Grep</h4>
+<p>A content search with the pattern apart from the query. <code>q</code> provides the name filters. <code>mode</code> is <code>literal</code> (default), <code>words</code>, <code>regex</code> or <code>sym</code>. The response has the search shape with <code>"content":true</code>.</p>
+<pre><code>{"id":2,"grep":"TODO","mode":"literal","q":"ext:pas in:~","limit":50}</code></pre>
+<pre><code>{"id":2,"ok":true,"total":3,"ms":4.2,"content":true,"results":[
+ {"path":"C:\\Users\\you\\Projects\\Main.pas","name":"Main.pas","dir":false,"size":8120,
+  "mtime":"2026-10-30T15:02:11Z","line":42,"text":"  // TODO: check the result","tmatch":[5,4]}]}</code></pre>
+
+<h4>Status</h4>
+<pre><code>{"id":3,"status":true}</code></pre>
+<pre><code>{"id":3,"ok":true,"state":"ready","files":5080000,"folders":610000,"crawled":123456,
+ "content_pending":42,"content_indexed":36000,"pid":1234,"version":"1.0.0",
+ "roots":["C:\\","D:\\"],"log":"C:\\Users\\you\\AppData\\Local\\sgcFSearch\\daemon.log"}</code></pre>
+<p><code>state</code> is one of <code>starting</code>, <code>loading</code>, <code>crawling</code>, <code>catchup</code>, <code>ready</code>, <code>stopping</code>, <code>stopped</code> (see <a href="#start-states">Index states</a>). <code>roots</code> lists the indexed drives.</p>
+
+<h4>Use</h4>
+<p>Reports that the user opened or copied a file, to feed the <a href="#r-frecency">frecency ranking</a>. <code>kind</code> is <code>open</code> or <code>copy</code>.</p>
+<pre><code>{"id":4,"use":"C:\\Docs\\report.pdf","kind":"open"}</code></pre>
+<pre><code>{"id":4,"ok":true}</code></pre>
+
+<h4>Show</h4>
+<p>Opens the search bar, optionally with text.</p>
+<pre><code>{"show":true,"q":"optional text"}</code></pre>
+<pre><code>{"ok":true}</code></pre>
+
+<h4>Stop</h4>
+<p>The app replies, then saves its index and exits.</p>
+<pre><code>{"stop":true}</code></pre>
+<pre><code>{"ok":true}</code></pre>
+
+<h3 id="pipe-errors">Errors</h3>
+<p>Errors come back as one line with <code>"ok":false</code> and a message:</p>
+<pre><code>{"id":5,"ok":false,"error":"text"}</code></pre>
+<p>A request with no known operation gets <code>{"ok":false,"error":"unknown request"}</code>. An invalid regular expression in <code>re:</code> is reported as a warning and ignored, while an invalid content pattern returns an error.</p>
+
+<h3 id="pipe-sample">Client sample</h3>
+<p>An illustrative PowerShell client that sends one search and prints the paths. It is a sample, not part of the product:</p>
+<pre><code># Illustrative sample: one search over the sgcFSearch pipe
+$sid  = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+$pipe = New-Object IO.Pipes.NamedPipeClientStream('.', "sgcFSearch-$sid",
+          [IO.Pipes.PipeDirection]::InOut)
+$pipe.Connect(5000)
+$utf8 = New-Object Text.UTF8Encoding($false)
+$w = New-Object IO.StreamWriter($pipe, $utf8)
+$w.NewLine = "`n"
+$w.AutoFlush = $true
+$r = New-Object IO.StreamReader($pipe, $utf8)
+$w.WriteLine('{"id":1,"q":"report ext:pdf","limit":10}')
+$resp = $r.ReadLine() | ConvertFrom-Json
+if ($resp.ok) { $resp.results | ForEach-Object { $_.path } } else { $resp.error }
+$pipe.Dispose()</code></pre>
+<p>The same connection can send more requests before it is closed. Without a named pipe library, run <code>sgcfs stdio</code> as a child process and exchange lines through its stdin and stdout.</p>
+</section>
+
+<!-- ============================================================ 12 -->
+<section class="chapter" id="internals">
+<h2><span class="num">12</span>How it works</h2>
+
+<h3 id="i-arch">Architecture</h3>
+<figure>
+<svg viewBox="0 0 760 372" role="img" aria-labelledby="arch-svg-title">
+  <title id="arch-svg-title">Architecture: sgcFSearch.exe owns the engine, sgcfs and other programs connect over the named pipe</title>
+  <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-head" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+  <!-- clients -->
+  <rect class="dg-box" x="16" y="70" width="170" height="54" rx="8"/>
+  <text class="dg-t" x="101" y="93" text-anchor="middle">sgcfs.exe</text>
+  <text class="dg-s" x="101" y="111" text-anchor="middle">command line client</text>
+  <rect class="dg-box" x="16" y="150" width="170" height="54" rx="8"/>
+  <text class="dg-t" x="101" y="173" text-anchor="middle">Other programs</text>
+  <text class="dg-s" x="101" y="191" text-anchor="middle">scripts, tools</text>
+  <!-- app -->
+  <rect class="dg-box" x="226" y="14" width="518" height="262" rx="12"/>
+  <text class="dg-t" x="242" y="38">sgcFSearch.exe (tray app, one per user)</text>
+  <rect class="dg-box2" x="242" y="56" width="150" height="40" rx="7"/>
+  <text class="dg-t" x="317" y="81" text-anchor="middle">Search bar</text>
+  <rect class="dg-box2" x="242" y="106" width="150" height="40" rx="7"/>
+  <text class="dg-t" x="317" y="131" text-anchor="middle">Tray icon, hotkey</text>
+  <rect class="dg-box2" x="242" y="156" width="150" height="48" rx="7"/>
+  <text class="dg-t" x="317" y="177" text-anchor="middle">Pipe server</text>
+  <text class="dg-s" x="317" y="194" text-anchor="middle">JSON lines</text>
+  <!-- engine -->
+  <rect class="dg-box2" x="414" y="56" width="314" height="204" rx="9"/>
+  <text class="dg-t" x="430" y="78">Engine</text>
+  <text class="dg-s" x="430" y="102">Name index in memory</text>
+  <text class="dg-s" x="430" y="122">Crawler (NT directory API, multi-threaded)</text>
+  <text class="dg-s" x="430" y="142">Watcher (ReadDirectoryChangesW)</text>
+  <text class="dg-s" x="430" y="162">USN journal catch-up</text>
+  <text class="dg-s" x="430" y="182">Searcher and usage (frecency)</text>
+  <text class="dg-s" x="430" y="202">Content indexer, trigram index</text>
+  <text class="dg-s" x="430" y="222">Grep (literal, words, regex, sym)</text>
+  <text class="dg-s" x="430" y="242">Checkpoint every 5 minutes</text>
+  <!-- links clients to pipe -->
+  <path class="dg-line" d="M186 97 C 214 97, 214 172, 240 175" marker-end="url(#ah)"/>
+  <path class="dg-line" d="M186 177 L 240 180" marker-end="url(#ah)"/>
+  <text class="dg-s" x="101" y="236" text-anchor="middle">\\.\pipe\sgcFSearch-&lt;SID&gt;</text>
+  <!-- bar/pipe to engine -->
+  <path class="dg-line" d="M392 76 L 412 76" marker-end="url(#ah)"/>
+  <path class="dg-line" d="M392 180 L 412 180" marker-end="url(#ah)"/>
+  <!-- bottom -->
+  <rect class="dg-box" x="226" y="302" width="250" height="58" rx="8"/>
+  <text class="dg-t" x="351" y="324" text-anchor="middle">Data folder</text>
+  <text class="dg-s" x="351" y="344" text-anchor="middle">config, names.idx, content.idx, usage, log</text>
+  <rect class="dg-box" x="494" y="302" width="250" height="58" rx="8"/>
+  <text class="dg-t" x="619" y="324" text-anchor="middle">Fixed drives</text>
+  <text class="dg-s" x="619" y="344" text-anchor="middle">files, folders, NTFS change journal</text>
+  <path class="dg-line" d="M500 260 L 400 300" marker-end="url(#ah)"/>
+  <path class="dg-line" d="M619 300 L 619 262" marker-start="url(#ah)" marker-end="url(#ah)"/>
+</svg>
+<figcaption>The app owns the engine. The search bar calls it directly, every other client goes through the pipe.</figcaption>
+</figure>
+
+<h3 id="i-crawl">The crawl</h3>
+<p>The crawler lists folders with the native NT API: each folder is opened relative to its parent handle (<code>NtOpenFile</code>) and listed in bulk, many entries per call, instead of one <code>FindNextFile</code> call per file. Several threads crawl in parallel. Junctions, symbolic links and mount points are recorded but not entered, which avoids loops and duplicates. Folders that cannot be opened are marked as denied, folders in the skip list are never opened, and cloud placeholder folders are crawled and marked as offline.</p>
+<p>Before a drive is crawled, its change journal position is stored. After the crawl, the changes made during the crawl are applied from the journal, so nothing is missed.</p>
+
+<h3 id="i-index">The name index</h3>
+<p>The index lives in memory: one compact record per file or folder (parent, first child, next sibling, name, size, modified time, flags), with the names stored once in a shared pool. Searches scan it on several threads and keep only the best results, which is why a query over millions of names takes milliseconds. The index is saved to <code>names.idx</code> together with the journal position of each drive, and loaded in about a second at the next start.</p>
+
+<h3 id="i-live">Live updates</h3>
+<ul>
+  <li><b>While running.</b> A watcher per drive uses <code>ReadDirectoryChangesW</code> on the whole drive. Changed folders are listed again and the differences applied. Renamed and moved folders keep their contents. A change is visible in searches within a fraction of a second.</li>
+  <li><b>Buffer overflow.</b> When too many changes arrive at once, the watcher catches up from the change journal, or rescans when that is not possible.</li>
+  <li><b>After a restart.</b> The NTFS change journal is read from the saved position, through the unprivileged journal interface, so no administrator rights are needed. Only the folders that changed are listed again. A drive without a usable journal is rescanned.</li>
+  <li><b>Checkpoints.</b> Every 5 minutes, when the index changed, the journal positions are refreshed and <code>names.idx</code> and <code>content.idx</code> are saved. They are saved again on exit. An index that was interrupted during a crawl or catch-up is never saved, so a later start does not trust a partial index.</li>
+</ul>
+
+<h3 id="i-content">The content index</h3>
+<p>The content indexer walks the content folders through the name index, so it does not crawl the disk again. It extracts the text of each file (see <a href="#c-formats">File formats</a>) and records every trigram, a sequence of three case-folded characters, with the list of files that contain it. A content query first takes the trigrams of the pattern (for a regular expression, of its required literal parts) to find candidate files, applies the name filters, then reads each remaining candidate again on a few worker threads to find the exact lines. Files that turn out to be changed or deleted are queued for reindexing.</p>
+</section>
+
+<!-- ============================================================ 13 -->
+<section class="chapter" id="performance">
+<h2><span class="num">13</span>Performance</h2>
+<p>QA measurements on one PC, with a Release build. They are not a guarantee: results depend on the disk, the CPU and the number of files.</p>
+<div class="tbl"><table>
+<tr><th>Measure</th><th>Result</th></tr>
+<tr><td>First crawl of C:</td><td>63 s, for 3,404,349 files and 447,577 folders</td></tr>
+<tr><td>Memory</td><td>306 MB private bytes</td></tr>
+<tr><td><code>names.idx</code> size</td><td>202 MB</td></tr>
+<tr><td>One word</td><td>15.8 ms</td></tr>
+<tr><td>Typo</td><td>13.8 ms</td></tr>
+<tr><td>Two words</td><td>17.6 ms</td></tr>
+<tr><td>Filtered</td><td>13.1 ms</td></tr>
+<tr><td>Grep</td><td>0.16 ms</td></tr>
+<tr><td>Live update visible</td><td>308 ms</td></tr>
+<tr><td>Restart to ready</td><td>1.0 s, journal catch-up 109 ms</td></tr>
+</table></div>
+<p>The query times are server times as reported by <code>sgcfs bench</code> (median of the runs). The five bench queries are described in <a href="#cli-examples">Examples</a>. Run <code>sgcfs bench</code> to measure your own PC.</p>
+</section>
+
+<!-- ============================================================ 14 -->
+<section class="chapter" id="faq">
+<h2><span class="num">14</span>Troubleshooting and FAQ</h2>
+
+<h3 id="faq-hotkey">The hotkey does not open the bar</h3>
+<p>Another program may own <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd>. sgcFSearch then falls back to <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>, then to <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd>. To see which one is active, open the tray menu (the hotkey is shown next to <b>Search</b>) or the log:</p>
+<pre><code>app: hotkey Alt+Shift+Space not available, error 1409
+app: hotkey Win+Shift+F active</code></pre>
+<p>Two other messages can appear: <code>app: invalid hotkey "..."</code> when the setting cannot be parsed, and <code>app: no global hotkey available</code> when none of the three could be registered.</p>
+<p>Choose a free combination in the <a href="#folders">Folders dialog</a>. Without any hotkey, open the bar from the tray icon or with <code>sgcfs show</code>.</p>
+
+<h3 id="faq-log">Where is the log?</h3>
+<p><code>%LOCALAPPDATA%\sgcFSearch\daemon.log</code>. The tray menu item <b>Open log</b> opens it and <code>sgcfs status</code> prints its path. It holds starts and stops, the hotkey, watcher and journal events, and errors. At 2 MB it moves to <code>daemon.log.old</code>.</p>
+
+<h3 id="faq-rebuild">How do I rebuild the index?</h3>
+<ol>
+  <li>Quit sgcFSearch from the tray menu, or run <code>sgcfs stop</code>.</li>
+  <li>Delete <code>names.idx</code> from the data folder to rebuild the name index. Delete <code>content.idx</code> to rebuild the content index.</li>
+  <li>Start sgcFSearch again. It crawls the drives as on the first run.</li>
+</ol>
+
+<h3 id="faq-second">What happens when I start sgcFSearch twice?</h3>
+<p>Only one instance runs per user. A second start does not build another index: it asks the running instance to show its search bar and exits. Started with <code>--background</code>, the second instance exits silently.</p>
+
+<h3 id="faq-missing">A file I know exists is not found</h3>
+<ul>
+  <li>Check the state. During the first crawl the index is still partial.</li>
+  <li>Check the skip list and the Drives setting in the <a href="#folders">Folders dialog</a>. Only fixed drives are indexed, network shares and removable drives are not part of the default set.</li>
+  <li>Folders your account cannot open (access denied) are listed, but their contents are not.</li>
+  <li>Junctions, symbolic links and mount points are not followed. Search for the file at its real location.</li>
+  <li>Words match the name, not the path. Use a path token, <code>in:</code> or <code>path:</code> for folder names.</li>
+  <li><code>ext:</code>, <code>type:</code> (except folders) and <code>size:</code> (except <code>size:empty</code>) match files only. <code>in:</code> matches the contents of the folder, not the folder itself.</li>
+  <li>Look at the status line for a warning about an ignored filter value.</li>
+</ul>
+
+<h3 id="faq-content">A text is not found inside a file</h3>
+<ul>
+  <li>The file must be below a content folder (default: your user folder).</li>
+  <li>It must not be larger than <code>content_max_size_mb</code> (default 16 MB).</li>
+  <li>It must not be inside an excluded folder such as <code>AppData</code>, <code>node_modules</code> or <code>.git</code> (see <a href="#c-limits">Limits and exclusions</a>).</li>
+  <li>Online-only cloud files are not read. Make the file available offline to have it indexed.</li>
+  <li>PDF and legacy Office files need a Windows IFilter for their extension.</li>
+  <li>After a start, the content indexer may still be reading files: watch for <i>N files being read</i> in the tray tooltip, or <code>content pending</code> in <code>sgcfs status</code>.</li>
+  <li>An uppercase letter makes the search case-sensitive (<a href="#c-modes">smart-case</a>).</li>
+  <li>Plain words next to a content filter must match the file name.</li>
+</ul>
+
+<h3 id="faq-fallback">Why does the bar show lines from inside files?</h3>
+<p>No file or folder name matched your words, so the <a href="#c-fallback">content fallback</a> searched the content folders instead. The status line says so.</p>
+
+<h3 id="faq-cli">sgcfs says "sgcFSearch is not running"</h3>
+<p><code>status</code> and <code>stop</code> do not start the app. Start <code>sgcFSearch.exe</code>, or run any search or <code>sgcfs show</code>, which start it in the background. If the start fails, check that <code>sgcFSearch.exe</code> is in the same folder as <code>sgcfs.exe</code>.</p>
+
+<h3 id="faq-settings">My manual changes to config.json have no effect</h3>
+<p>The settings are read at start. Run <code>sgcfs stop</code> and start sgcFSearch again, or use the Folders dialog, which restarts it for you.</p>
+</section>
+
+<!-- ============================================================ 15 -->
+<section class="chapter" id="history">
+<h2><span class="num">15</span>Version history</h2>
+<h3 id="v100">1.0.0, November 2026</h3>
+<p>First release.</p>
+<ul>
+  <li>Name index of every fixed drive, built by a multi-threaded crawler on the NT directory API and saved to <code>names.idx</code>.</li>
+  <li>NTFS USN journal catch-up at startup and live change watcher.</li>
+  <li>Search bar with a global hotkey (<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd>, with fallbacks), ranked results, icons, filter chips and history.</li>
+  <li>Query syntax: name modifiers, path tokens, <code>ext:</code>, <code>type:</code>, <code>kind:</code>, <code>in:</code>, <code>path:</code>, <code>size:</code>, <code>mtime:</code>, <code>re:</code>, <code>limit:</code> and <code>sort:</code>.</li>
+  <li>Content index of text files under the content folders, with <code>grep:</code>, <code>regex:</code> and <code>sym:</code> content search.</li>
+  <li>Frecency ranking from opened and copied results.</li>
+  <li>Named pipe JSON lines API restricted to the current user.</li>
+  <li><code>sgcfs</code> command line client: search, JSON output, stdio bridge, status, stop, show, install, uninstall and bench.</li>
+  <li>Tray icon with the index status, Folders dialog, Start at login and Open log.</li>
+  <li>Single instance: a second start shows the search bar of the running instance.</li>
+  <li>Distributed as a signed per user installer (recommended) and as a zip. The setup offers the PATH entry and Start at login as tasks; with the zip, <code>sgcfs install</code> adds them.</li>
+</ul>
+<p class="footer">sgcFSearch 1.0.0. Copyright &copy; 2026 eSeGeCe. <a href="https://www.esegece.com">https://www.esegece.com</a></p>
+</section>
+
+</main>
+</div>
+
+<script>
+(function () {
+  var toc = document.getElementById('toc');
+  var narrow = window.matchMedia('(max-width: 860px)');
+  function fit() { if (narrow.matches) { toc.removeAttribute('open'); } else { toc.setAttribute('open', ''); } }
+  fit();
+  if (narrow.addEventListener) { narrow.addEventListener('change', fit); }
+  toc.addEventListener('click', function (e) {
+    if (e.target.tagName === 'A' && narrow.matches) { toc.removeAttribute('open'); }
+  });
+  if (!('IntersectionObserver' in window)) { return; }
+  var links = {};
+  Array.prototype.forEach.call(toc.querySelectorAll('a[href^="#"]'), function (a) { links[a.getAttribute('href').slice(1)] = a; });
+  var current = null;
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      var key = en.target.getAttribute('data-toc');
+      if (en.isIntersecting && links[key]) {
+        if (current) { current.classList.remove('active'); }
+        current = links[key];
+        current.classList.add('active');
+      }
+    });
+  }, { rootMargin: '0px 0px -75% 0px' });
+  Object.keys(links).forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) { return; }
+    var target = el.tagName === 'SECTION' ? (el.querySelector('h2') || el) : el;
+    target.setAttribute('data-toc', id);
+    obs.observe(target);
+  });
+})();
+</script>
+</body>
+</html>

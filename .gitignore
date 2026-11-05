@@ -1,0 +1,23 @@
+# Build output
+bin/
+dcu/
+build/logs/
+installer/Output/
+
+# Binaries
+*.exe
+*.dll
+*.bpl
+*.dcp
+*.dcu
+*.res
+*.ico
+*.pdf
+*.zip
+
+# IDE local files
+*.local
+*.identcache
+*.dsk
+__history/
+__recovery/

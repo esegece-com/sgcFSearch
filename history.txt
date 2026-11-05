@@ -1,0 +1,27 @@
+*******************************************************
+
+ sgcFSearch
+
+*******************************************************
+
+ [*] : Bug
+ [+] : New
+ [-] : Deleted
+ [/] : Breaking changes
+
+Versions
+--------
+
+1.0.0: 2026 November
+
+ [+] Name index of every fixed drive, built by a multi-threaded crawler on the NT directory API and saved to names.idx.
+ [+] NTFS USN journal catch-up at startup and live change watcher.
+ [+] Search bar with a global hotkey (Alt+Shift+Space, with fallbacks), ranked results, icons, filter chips and history.
+ [+] Query syntax: name modifiers, path tokens, ext:, type:, kind:, in:, path:, size:, mtime:, re:, limit: and sort:.
+ [+] Content index of text files under the content folders, with grep:, regex: and sym: content search.
+ [+] Frecency ranking from opened and copied results.
+ [+] Named pipe JSON lines API restricted to the current user.
+ [+] sgcfs command line client: search, JSON output, stdio bridge, status, stop, show, install, uninstall and bench.
+ [+] Tray icon with the index status, Folders dialog, Start at login and Open log.
+ [+] Single instance: a second start shows the search bar of the running instance.
+ [+] Per-user installer (Inno Setup) with Start at login and PATH options.
