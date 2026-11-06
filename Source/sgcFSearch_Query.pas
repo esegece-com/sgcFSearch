@@ -14,6 +14,8 @@ unit sgcFSearch_Query;
   - words, AND semantics, matched against the name (case-insensitive).
   Modifiers: 'exact (whole name), ^prefix, suffix$, ^both$ (= exact),
   !exclude (combinable: !^tmp). Double quotes group spaces: "my file".
+  Wildcards: a word with * (any run of characters) or ? (one character) is
+  a pattern on the whole name, no typo tolerance: *.pas, report*, a?c.
   - path tokens: a word with \ or / is split, the last component matches the
   name, the earlier ones ancestor folder names in order (substring):
   src\main, node_modules\ (anything below a node_modules folder).
@@ -274,6 +276,10 @@ begin
   end
   else
     vTerm.Text := vBody;
+  // * and ? cannot be in a file name: a wildcard pattern on the whole name,
+  // also inside quotes; ' ^ $ are redundant then
+  if (Pos('*', vTerm.Text) > 0) or (Pos('?', vTerm.Text) > 0) then
+    vTerm.Kind := fsmkWildcard;
   vTerm.Folded := sgcFSearchFold(vTerm.Text);
   Q.Terms := Q.Terms + [vTerm];
 end;

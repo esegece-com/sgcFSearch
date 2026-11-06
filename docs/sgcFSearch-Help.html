@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>sgcFSearch Help</title>
-<meta name="description" content="sgcFSearch 1.0.0 user guide: whole-disk file search for Windows, search bar, query syntax, content search, command line and pipe API.">
+<meta name="description" content="sgcFSearch 1.0.1 user guide: whole-disk file search for Windows, search bar, query syntax, content search, command line and pipe API.">
 <style>
 :root {
   --bg: #ffffff;
@@ -243,7 +243,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <aside class="sidebar" aria-label="Table of contents">
   <div class="brand">
     <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="8" fill="#0b5cb5"/><circle cx="15" cy="15" r="7" fill="none" stroke="#fff" stroke-width="2.6"/><line x1="20" y1="20" x2="26" y2="26" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
-    <div><b>sgcFSearch</b><span>User Guide, version 1.0.0</span></div>
+    <div><b>sgcFSearch</b><span>User Guide, version 1.0.1</span></div>
   </div>
   <details class="toc" id="toc" open>
     <summary>Contents</summary>
@@ -286,7 +286,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
   <h1>sgcFSearch</h1>
   <p class="subtitle">User Guide</p>
   <div class="rule" aria-hidden="true"></div>
-  <p class="meta">Version 1.0.0<br>2026-11-03<br>eSeGeCe, <a href="https://www.esegece.com">https://www.esegece.com</a><br>Copyright &copy; 2026 eSeGeCe</p>
+  <p class="meta">Version 1.0.1<br>2026-11-06<br>eSeGeCe, <a href="https://www.esegece.com">https://www.esegece.com</a><br>Copyright &copy; 2026 eSeGeCe</p>
 </header>
 
 <nav class="print-toc" aria-label="Contents">
@@ -615,7 +615,9 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <tr><td><code>^both$</code></td><td>Same as <code>'exact</code>.</td><td><code>^desktop.ini$</code></td></tr>
 <tr><td><code>!word</code></td><td>Exclude names that match. Combines with the other modifiers.</td><td><code>!^tmp</code>, <code>!.log$</code></td></tr>
 <tr><td><code>"two words"</code></td><td>Double quotes keep spaces inside one word. Modifier characters inside quotes are taken literally.</td><td><code>"annual report"</code></td></tr>
+<tr><td><code>*</code>, <code>?</code></td><td>Wildcards: <code>*</code> matches any run of characters (also none), <code>?</code> exactly one character. The pattern matches the whole name, with no typo tolerance.</td><td><code>*.pas</code>, <code>report*</code>, <code>a?c</code></td></tr>
 </table></div>
+<p>A word with <code>*</code> or <code>?</code> is a wildcard pattern: <code>*.pas</code> finds names ending in <code>.pas</code>, <code>report*</code> names starting with <code>report</code>, <code>*report*</code> names containing it, and <code>a?c</code> three character names such as <code>abc</code> or <code>a1c</code>. Wildcards also work inside double quotes and in the last part of a <a href="#q-path">path token</a> (<code>src\*.pas</code>), since <code>*</code> and <code>?</code> cannot appear in a file name. Filter values are not affected.</p>
 <p>Matching is on the name only. To match folder names along the path, use <a href="#q-path">path tokens</a>, <code>in:</code> or <code>path:</code>.</p>
 
 <h3 id="q-typo">Typo tolerance</h3>
@@ -960,7 +962,7 @@ sgcfs stop</code></pre>
 sgcfs 'package.json !node_modules\ | ForEach-Object { Split-Path $_ }</code></pre>
 <p><code>sgcfs status</code> prints one value per line (example values):</p>
 <pre><code>state            ready
-version          1.0.0
+version          1.0.1
 pid              12345
 files            3,404,349
 folders          447,577
@@ -1023,7 +1025,7 @@ log              C:\Users\you\AppData\Local\sgcFSearch\daemon.log</code></pre>
 <h4>Status</h4>
 <pre><code>{"id":3,"status":true}</code></pre>
 <pre><code>{"id":3,"ok":true,"state":"ready","files":5080000,"folders":610000,"crawled":123456,
- "content_pending":42,"content_indexed":36000,"pid":1234,"version":"1.0.0",
+ "content_pending":42,"content_indexed":36000,"pid":1234,"version":"1.0.1",
  "roots":["C:\\","D:\\"],"log":"C:\\Users\\you\\AppData\\Local\\sgcFSearch\\daemon.log"}</code></pre>
 <p><code>state</code> is one of <code>starting</code>, <code>loading</code>, <code>crawling</code>, <code>catchup</code>, <code>ready</code>, <code>stopping</code>, <code>stopped</code> (see <a href="#start-states">Index states</a>). <code>roots</code> lists the indexed drives.</p>
 
@@ -1222,6 +1224,10 @@ app: hotkey Win+Shift+F active</code></pre>
 <!-- ============================================================ 15 -->
 <section class="chapter" id="history">
 <h2><span class="num">15</span>Version history</h2>
+<h3 id="v101">1.0.1, November 2026</h3>
+<ul>
+  <li>Wildcards in name words: <code>*</code> matches any run of characters and <code>?</code> one character, matched against the whole name, in addition to the existing syntax.</li>
+</ul>
 <h3 id="v100">1.0.0, November 2026</h3>
 <p>First release.</p>
 <ul>
@@ -1237,7 +1243,7 @@ app: hotkey Win+Shift+F active</code></pre>
   <li>Single instance: a second start shows the search bar of the running instance.</li>
   <li>Distributed as a signed per user installer (recommended) and as a zip. The setup offers the PATH entry and Start at login as tasks; with the zip, <code>sgcfs install</code> adds them.</li>
 </ul>
-<p class="footer">sgcFSearch 1.0.0. Copyright &copy; 2026 eSeGeCe. <a href="https://www.esegece.com">https://www.esegece.com</a></p>
+<p class="footer">sgcFSearch 1.0.1. Copyright &copy; 2026 eSeGeCe. <a href="https://www.esegece.com">https://www.esegece.com</a></p>
 </section>
 
 </main>

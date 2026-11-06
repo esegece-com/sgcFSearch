@@ -327,6 +327,9 @@ begin
   R := Rows(E, 'alpha grep:zebracorn');
   Check((Length(R.Items) = 1) and AllEndWith(R, 'alpha_notes.txt'),
     'name term on content hits');
+  R := Rows(E, 'alpha*.txt grep:zebracorn');
+  Check((Length(R.Items) = 1) and AllEndWith(R, 'alpha_notes.txt'),
+    'wildcard name term on content hits');
   R := Rows(E, 'sym:FrobnicateAll');
   Check(R.IsContentResult and (Length(R.Items) >= 1) and AllEndWith(R,
     'Widget.pas'), 'sym:');

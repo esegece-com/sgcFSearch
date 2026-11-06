@@ -44,6 +44,7 @@ All words must match the file or folder name (case-insensitive, AND semantics). 
 | `^prefix`, `suffix$`, `^both$` | name starts with, ends with, equals |
 | `!word` | exclude names that match (combinable: `!^tmp`) |
 | `"my file"` | double quotes group spaces |
+| `*.pas`, `report*`, `a?c` | wildcards: `*` any run of characters, `?` one character, the pattern matches the whole name, no typo tolerance |
 | `src\main`, `node_modules\` | path tokens: the last part matches the name, earlier parts match ancestor folder names in order |
 | `ext:pas,dfm` | extension list, no dot, files only |
 | `type:images,code` | documents, images, videos, audio, code, archives, apps, fonts, folders |
@@ -61,7 +62,7 @@ All words must match the file or folder name (case-insensitive, AND semantics). 
 
 With a content filter, plain words in the same query still have to appear in the file name. Name filters such as `ext:` and `in:` apply to content results too.
 
-Examples: `report ext:pdf mtime:month`, `^setup ext:exe in:~\Downloads`, `grep:TODO ext:pas in:~\Projects`.
+Examples: `report ext:pdf mtime:month`, `^setup ext:exe in:~\Downloads`, `invoice*2026*.pdf in:~\Documents`, `grep:TODO ext:pas in:~\Projects`.
 
 ## Keyboard shortcuts
 

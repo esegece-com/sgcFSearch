@@ -96,6 +96,23 @@ begin
     (Length(q.Terms[1].Dirs) = 2) and (q.Terms[1].Dirs[1] = 'b') and
     (q.Terms[1].Folded = 'c') and (q.Terms[2].Folded = '') and
     (q.Terms[2].Dirs[0] = 'node_modules'), 'parse path tokens');
+  q := sgcFSearchParseQuery
+    ('*.pas Report* a?c !*.tmp src\*.pas "my rep*"', vNow);
+  Check((Length(q.Terms) = 6) and (q.Terms[0].Kind = fsmkWildcard) and
+    (q.Terms[0].Folded = '*.pas') and (q.Terms[1].Kind = fsmkWildcard) and
+    (q.Terms[1].Folded = 'report*') and (q.Terms[1].Text = 'Report*') and
+    (q.Terms[2].Kind = fsmkWildcard) and (q.Terms[2].Folded = 'a?c') and
+    q.Terms[3].Exclude and (q.Terms[3].Kind = fsmkWildcard) and
+    (q.Terms[3].Folded = '*.tmp') and (q.Terms[4].Kind = fsmkWildcard) and
+    (q.Terms[4].Folded = '*.pas') and (Length(q.Terms[4].Dirs) = 1) and
+    (q.Terms[4].Dirs[0] = 'src') and (q.Terms[5].Kind = fsmkWildcard) and
+    (q.Terms[5].Text = 'my rep*') and q.HasNameTerms, 'parse wildcards');
+  q := sgcFSearchParseQuery('''*.PAS ^rep*$ s*c\main path:a*b', vNow);
+  Check((Length(q.Terms) = 3) and (q.Terms[0].Kind = fsmkWildcard) and
+    (q.Terms[0].Folded = '*.pas') and (q.Terms[1].Kind = fsmkWildcard) and
+    (q.Terms[1].Folded = 'rep*') and (q.Terms[2].Kind = fsmkContains) and
+    (q.Terms[2].Dirs[0] = 's*c') and (Length(q.PathTexts) = 1) and
+    (q.PathTexts[0] = 'a*b'), 'parse wildcard modifiers, dirs and filters');
   q := sgcFSearchParseQuery('ext:pas,.DFM ext:', vNow);
   Check((Length(q.Exts) = 2) and (q.Exts[1] = 'dfm') and
     (Length(q.Warnings) = 1), 'parse ext');
@@ -224,6 +241,45 @@ begin
   n := 'rs';
   Check((sgcFSearchMatchQualityRaw(PChar(S), Length(S), PChar(n), Length(n),
     fsmkContains, nil, p, l) = SGCFS_QUALITY_WORD) and (p = 5), 'quality word');
+  // wildcards (folded pattern, whole name)
+  n := '*.rs';
+  Check((sgcFSearchMatchQualityRaw(PChar(S), Length(S), PChar(n), Length(n),
+    fsmkWildcard, nil, p, l) = SGCFS_QUALITY_SUBSTR) and (p = 4) and (l = 3),
+    'wild suffix');
+  n := 'ma*';
+  Check((sgcFSearchMatchQualityRaw(PChar(S), Length(S), PChar(n), Length(n),
+    fsmkWildcard, nil, p, l) = SGCFS_QUALITY_PREFIX) and (p = 0) and (l = 2),
+    'wild prefix');
+  n := '?ain.r?';
+  Check((sgcFSearchMatchQualityRaw(PChar(S), Length(S), PChar(n), Length(n),
+    fsmkWildcard, nil, p, l) = SGCFS_QUALITY_EXACT) and (p = 1) and (l = 5),
+    'wild question exact');
+  n := '?in.rs';
+  Check(sgcFSearchMatchQualityRaw(PChar(S), Length(S), PChar(n), Length(n),
+    fsmkWildcard, nil, p, l) = SGCFS_QUALITY_NONE, 'wild question one char');
+  n := '*.r';
+  Check(sgcFSearchMatchQualityRaw(PChar(S), Length(S), PChar(n), Length(n),
+    fsmkWildcard, nil, p, l) = SGCFS_QUALITY_NONE, 'wild whole name');
+  n := '*';
+  Check((sgcFSearchMatchQualityRaw(PChar(S), Length(S), PChar(n), Length(n),
+    fsmkWildcard, nil, p, l) = SGCFS_QUALITY_SUBSTR) and (p = 0) and (l = 0),
+    'wild star only');
+  S := 'ab';
+  n := '**a**b**';
+  Check(sgcFSearchMatchQualityRaw(PChar(S), Length(S), PChar(n), Length(n),
+    fsmkWildcard, nil, p, l) = SGCFS_QUALITY_SUBSTR, 'wild pattern longer');
+  n := 'a?b';
+  Check(sgcFSearchMatchQualityRaw(PChar(S), Length(S), PChar(n), Length(n),
+    fsmkWildcard, nil, p, l) = SGCFS_QUALITY_NONE, 'wild ? needs a char');
+  S := 'XaXAB.Txt';
+  n := '*ab*.txt';
+  Check((sgcFSearchMatchQualityRaw(PChar(S), Length(S), PChar(n), Length(n),
+    fsmkWildcard, nil, p, l) = SGCFS_QUALITY_SUBSTR) and (p = 3) and (l = 2),
+    'wild backtrack highlight');
+  S := StringOfChar('a', 400);
+  n := '*a*a*a*a*a*a*b';
+  Check(sgcFSearchMatchQualityRaw(PChar(S), Length(S), PChar(n), Length(n),
+    fsmkWildcard, nil, p, l) = SGCFS_QUALITY_NONE, 'wild no blowup');
   n := 'mian.rs';
   vF.Init(PChar(n), Length(n));
   S := 'main.rs';
@@ -444,6 +500,32 @@ begin
   Check(Total('docs\main') = 0, 'path token no match');
   Check(Total('T\src\lib\help') = 2, 'path token through root');
   Check(Total('src\') = 6, 'path token trailing separator');
+  // wildcards
+  S := Run('*.pas', vR);
+  Check((S = 'helper.pas') and (vR.Items[0].MatchPos = 6) and
+    (vR.Items[0].MatchLen = 4), 'wild *.pas: ' + S);
+  Check(Names('H*.DFM') = 'Helper.dfm', 'wild case-insensitive');
+  S := Run('report*', vR);
+  Check((vR.Total = 2) and not Has('report*', 'MyReport.txt') and
+    (vR.Items[0].MatchPos = 0) and (vR.Items[0].MatchLen = 6),
+    'wild prefix: ' + S);
+  Check((Total('*report*') = 3) and Has('*report*', 'MyReport.txt'),
+    'wild contains');
+  Check(Names('rep*2025*.pdf') = 'report_2025.pdf', 'wild several stars');
+  Check((Total('m??n.rs') = 2) and (Total('m?n.rs') = 0), 'wild ? length');
+  S := Run('* ext:pas', vR);
+  Check((vR.Total = 1) and (vR.Items[0].MatchPos = 0) and
+    (vR.Items[0].MatchLen = 0), 'wild star only: ' + S);
+  Check(Total('* kind:file') = 20, 'wild star matches every name');
+  Check((Total('main !*.rs') = 3) and not Has('main !*.rs', 'main.rs'),
+    'wild exclude');
+  Check((Names('src\*.pas') = 'helper.pas') and (Total('src\*.txt') = 2) and
+    (Total('docs\*.pas') = 0), 'wild path token');
+  Check(Names('"my f*"') = 'my file.txt', 'wild quoted');
+  Check((Names('''*.pas') = 'helper.pas') and (Names('^*.pas$') = 'helper.pas'),
+    'wild redundant modifiers');
+  Check(Has('recieve', 'receive.txt') and (Total('recie*') = 0),
+    'wild no typo tolerance');
   // filters
   Check(Names('ext:pas') = 'helper.pas', 'ext');
   Check(Total('ext:pas,dfm') = 2, 'ext list');
@@ -567,6 +649,8 @@ begin
     'mf in size');
   Check(not MF('C:\T\src\lib\helper.pas', 'in:C:\T\docs'), 'mf in no');
   Check(not MF('C:\T\src\lib\helper.pas', '!lib\ grep:x'), 'mf exclude dir');
+  Check(not MF('C:\T\src\lib\helper.pas', '!*.pas grep:x') and
+    MF('C:\T\src\lib\helper.pas', '!*.txt grep:x'), 'mf exclude wildcard');
   Check(MF('C:\T\src\lib\helper.pas', 'nomatch path:lib type:code'),
     'mf ignores name terms');
   Check(not MF('C:\T', ''), 'mf root');

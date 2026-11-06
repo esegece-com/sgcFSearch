@@ -12,6 +12,10 @@
 Versions
 --------
 
+1.0.1: 2026 November
+
+ [+] Wildcards in name words: * matches any run of characters and ? one character, matched against the whole name, in addition to the existing syntax.
+
 1.0.0: 2026 November
 
  [+] Name index of every fixed drive, built by a multi-threaded crawler on the NT directory API and saved to names.idx.

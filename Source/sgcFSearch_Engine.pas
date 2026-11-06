@@ -60,7 +60,7 @@ uses
   sgcFSearch_Grep;
 
 const
-  SGCFS_ENGINE_VERSION = '1.0.0';
+  SGCFS_ENGINE_VERSION = '1.0.1';
   SGCFS_CHECKPOINT_INTERVAL_MS = 5 * 60 * 1000;
   SGCFS_CHANGED_THROTTLE_MS = 100;
 
@@ -970,7 +970,7 @@ procedure TsgcFSearchEngine.DoContentSearch(const Query: TsgcFSearchQuery;
   NameTerms: Boolean; out Rows: TsgcFSearchEngineRows);
 var
   vQ: TsgcFSearchQuery;
-  vTerms: TArray<string>;
+  vTerms, vWilds: TArray<string>;
   vFiltered: Boolean;
   vFilter: TFunc<string, Boolean>;
   vGrep: TsgcFSearchGrep;
@@ -991,23 +991,30 @@ begin
   else
     vLimit := SGCFS_DEFAULT_LIMIT;
   // positive name terms of an explicit content query: folded substrings of
-  // the file name (the words fallback searches them as content instead)
+  // the file name (the words fallback searches them as content instead),
+  // wildcard terms as patterns on the whole name
   vTerms := nil;
+  vWilds := nil;
   if NameTerms then
     for i := 0 to High(vQ.Terms) do
       if not vQ.Terms[i].Exclude and (vQ.Terms[i].Folded <> '') then
-        vTerms := vTerms + [vQ.Terms[i].Folded];
-  vFiltered := (Length(vTerms) > 0) or (Length(vQ.Exts) > 0) or vQ.HasType or
-    (vQ.Kind <> fskAny) or (Length(vQ.InPaths) > 0) or
-    (Length(vQ.PathTexts) > 0) or vQ.HasSize or vQ.HasMTime or
-    (vQ.NameRegex <> '');
+      begin
+        if vQ.Terms[i].Kind = fsmkWildcard then
+          vWilds := vWilds + [vQ.Terms[i].Folded]
+        else
+          vTerms := vTerms + [vQ.Terms[i].Folded];
+      end;
+  vFiltered := (Length(vTerms) > 0) or (Length(vWilds) > 0) or
+    (Length(vQ.Exts) > 0) or vQ.HasType or (vQ.Kind <> fskAny) or
+    (Length(vQ.InPaths) > 0) or (Length(vQ.PathTexts) > 0) or vQ.HasSize or
+    vQ.HasMTime or (vQ.NameRegex <> '');
   if not vFiltered then
     for i := 0 to High(vQ.Terms) do
       if vQ.Terms[i].Exclude then
         vFiltered := True;
   vFilter := nil;
   if vFiltered then
-    vFilter := function(Path: string): Boolean var vEnt, j: Integer;
+    vFilter := function(Path: string): Boolean var vEnt, j, vPos, vLen: Integer;
 vName:
   string;
   begin
@@ -1017,11 +1024,16 @@ vName:
       vEnt := FIndex.FindPath(Path);
       if (vEnt < 0) or not FSearcher.MatchesFilters(vEnt, vQ) then
         Exit;
-      if Length(vTerms) > 0 then
+      if (Length(vTerms) > 0) or (Length(vWilds) > 0) then
       begin
         vName := sgcFSearchFold(FIndex.NameOf(vEnt));
         for j := 0 to High(vTerms) do
           if Pos(vTerms[j], vName) = 0 then
+            Exit;
+        for j := 0 to High(vWilds) do
+          if sgcFSearchMatchQuality(PChar(vName), nil, Length(vName),
+            PChar(vWilds[j]), Length(vWilds[j]), fsmkWildcard, nil, vPos, vLen)
+            = SGCFS_QUALITY_NONE then
             Exit;
       end;
       Result := True;
@@ -1094,10 +1106,12 @@ begin
   DoNameSearch(vQ, Limit, Rows);
   if (Rows.Total = 0) and vQ.HasNameTerms then
   begin
-    // content fallback: every name word must be in the file
+    // content fallback: every name word must be in the file (a wildcard
+    // pattern is not a content word)
     vWords := '';
     for i := 0 to High(vQ.Terms) do
-      if not vQ.Terms[i].Exclude and (vQ.Terms[i].Text <> '') then
+      if not vQ.Terms[i].Exclude and (vQ.Terms[i].Text <> '') and
+        (vQ.Terms[i].Kind <> fsmkWildcard) then
       begin
         if vWords <> '' then
           vWords := vWords + ' ';

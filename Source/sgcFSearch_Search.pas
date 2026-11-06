@@ -408,7 +408,7 @@ begin
         begin
           vFirst := False;
           vEC := (vTier > SGCFS_QUALITY_FUZZY) and (vPos >= 0) and
-            (Length(vT.Raw) = vT.NeedleLen) and
+            (vT.Kind <> fsmkWildcard) and (Length(vT.Raw) = vT.NeedleLen) and
             CompareMem(R + vPos, PChar(vT.Raw), vT.NeedleLen * SizeOf(Char));
         end;
       end;

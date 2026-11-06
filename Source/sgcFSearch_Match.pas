@@ -12,7 +12,8 @@ unit sgcFSearch_Match;
 {$I sgcVer.inc}
 { Name matching primitives: case folding of UTF-16 code units, folded
   substring / prefix / suffix / equals search on PChar + Len (no string
-  allocation), word boundaries, fuzzy matching (one typo) and quality tiers.
+  allocation), wildcard patterns, word boundaries, fuzzy matching (one typo)
+  and quality tiers.
 
   "Folded" text is text mapped through sgcFSearchFoldMap. Needles are always
   passed folded. Functions named *Fold take a raw (unfolded) hay and fold it
@@ -36,7 +37,10 @@ const
   SGCFS_FUZZY_MAX_LEN = 63;
 
 type
-  TsgcFSearchMatchKind = (fsmkContains, fsmkExact, fsmkPrefix, fsmkSuffix);
+  /// fsmkWildcard: the needle is a pattern on the whole name, * matches any
+  /// run of characters (also none), ? exactly one character.
+  TsgcFSearchMatchKind = (fsmkContains, fsmkExact, fsmkPrefix, fsmkSuffix,
+    fsmkWildcard);
 
   /// Approximate substring matcher, optimal string alignment distance 1
   /// (one insertion, deletion, substitution or adjacent transposition),
@@ -93,7 +97,10 @@ function sgcFSearchIsWordStart(Name: PChar; NameLen, Pos: Integer): Boolean;
 /// name (required), Raw the raw name (nil: word starts are detected on the
 /// folded text, no camelCase). Fuzzy (may be nil) is only tried for
 /// fsmkContains when there is no exact substring. An empty needle matches
-/// with SGCFS_QUALITY_SUBSTR and MatchPos -1.
+/// with SGCFS_QUALITY_SUBSTR and MatchPos -1. fsmkWildcard: exact without
+/// any *, prefix when the pattern does not start with *, substring
+/// otherwise; the highlight is the first literal run of the pattern (0 / 0
+/// for a pattern of wildcards only).
 function sgcFSearchMatchQuality(Folded, Raw: PChar; NameLen: Integer;
   Needle: PChar; NeedleLen: Integer; Kind: TsgcFSearchMatchKind;
   Fuzzy: PsgcFSearchFuzzy; out MatchPos, MatchLen: Integer): Integer;
@@ -277,6 +284,78 @@ begin
   Result := True;
 end;
 
+// Folded name against a folded wildcard pattern, whole name. Iterative,
+// one backtrack point (the last * seen), no recursion.
+function DoWildQuality(Hay: PChar; HayLen: Integer; Pattern: PChar;
+  PatLen: Integer; out MatchPos, MatchLen: Integer): Integer;
+var
+  p, S, vStarP, vStarS, vLit, vLitLen, vHl: Integer;
+  C: Char;
+begin
+  Result := SGCFS_QUALITY_NONE;
+  MatchPos := -1;
+  MatchLen := 0;
+  // first literal run of the pattern, the highlight
+  vLit := 0;
+  while (vLit < PatLen) and ((Pattern[vLit] = '*') or (Pattern[vLit] = '?')) do
+    Inc(vLit);
+  vLitLen := 0;
+  while (vLit + vLitLen < PatLen) and (Pattern[vLit + vLitLen] <> '*') and
+    (Pattern[vLit + vLitLen] <> '?') do
+    Inc(vLitLen);
+  vHl := 0;
+  p := 0;
+  S := 0;
+  vStarP := -1;
+  vStarS := 0;
+  while S < HayLen do
+  begin
+    if p < PatLen then
+    begin
+      C := Pattern[p];
+      if C = '*' then
+      begin
+        vStarP := p;
+        vStarS := S;
+        Inc(p);
+        Continue;
+      end;
+      if (C = '?') or (C = Hay[S]) then
+      begin
+        // the last time the first literal is consumed is on the match path
+        if p = vLit then
+          vHl := S;
+        Inc(p);
+        Inc(S);
+        Continue;
+      end;
+    end;
+    if vStarP < 0 then
+      Exit;
+    // let the last * take one more char and retry the rest
+    p := vStarP + 1;
+    Inc(vStarS);
+    S := vStarS;
+  end;
+  while (p < PatLen) and (Pattern[p] = '*') do
+    Inc(p);
+  if p < PatLen then
+    Exit;
+  if vLitLen > 0 then
+  begin
+    MatchPos := vHl;
+    MatchLen := vLitLen;
+  end
+  else
+    MatchPos := 0;
+  if Pattern[0] = '*' then
+    Exit(SGCFS_QUALITY_SUBSTR);
+  for p := 1 to PatLen - 1 do
+    if Pattern[p] = '*' then
+      Exit(SGCFS_QUALITY_PREFIX);
+  Result := SGCFS_QUALITY_EXACT;
+end;
+
 function sgcFSearchMatchQuality(Folded, Raw: PChar; NameLen: Integer;
   Needle: PChar; NeedleLen: Integer; Kind: TsgcFSearchMatchKind;
   Fuzzy: PsgcFSearchFuzzy; out MatchPos, MatchLen: Integer): Integer;
@@ -291,6 +370,10 @@ begin
     Exit(SGCFS_QUALITY_SUBSTR);
   if NameLen < NeedleLen then
   begin
+    // a pattern can be longer than the names it matches (* matches none)
+    if Kind = fsmkWildcard then
+      Exit(DoWildQuality(Folded, NameLen, Needle, NeedleLen, MatchPos,
+        MatchLen));
     if (Kind = fsmkContains) and (Fuzzy <> nil) and
       Fuzzy.Match(Folded, NameLen, MatchPos, MatchLen) then
       Result := SGCFS_QUALITY_FUZZY;
@@ -332,6 +415,9 @@ begin
             Result := SGCFS_QUALITY_SUBSTR;
         end;
       end;
+    fsmkWildcard:
+      Result := DoWildQuality(Folded, NameLen, Needle, NeedleLen, MatchPos,
+        MatchLen);
   else
     begin
       p := sgcFSearchPos(Folded, NameLen, Needle, NeedleLen, 0);

@@ -62,6 +62,8 @@ const
     '  suffix$       name ends with' + sLineBreak +
     '  !word         exclude (combinable: !^tmp)' + sLineBreak +
     '  "a b"         group words with spaces' + sLineBreak +
+    '  *.pas, a?c    wildcards: * any run, ? one char, on the whole name' +
+    sLineBreak +
     '  src\main      path tokens: earlier parts match ancestor folders' +
     sLineBreak + '  ext:pas,dfm   extensions (files only)' + sLineBreak +
     '  type:code     documents images videos audio code archives apps fonts folders'
