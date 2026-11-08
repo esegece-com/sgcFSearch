@@ -77,7 +77,8 @@ type
     FError: string;
     FWarning: string;
     FFallback: Boolean;
-    FKeepPath: string;
+    FKeep: Boolean;
+    FStatusShown: string;
     FEngineText: string;
     FBoxRect: TRect;
     FChipRects: array [TsgcFSearchBarChip] of TRect;
@@ -319,6 +320,24 @@ begin
     Result := FormatFloat('0.0', Size / 1048576, GInv) + ' MB'
   else
     Result := FormatFloat('0.0', Size / 1073741824, GInv) + ' GB';
+end;
+
+function sgcBarSameRows(const A, B: TArray<TsgcFSearchEngineRow>): Boolean;
+var
+  i: Integer;
+begin
+  // every field the list paints; Score is not painted, a new order shows in Path
+  Result := Length(A) = Length(B);
+  if Result then
+    for i := 0 to High(A) do
+      if (A[i].Path <> B[i].Path) or (A[i].Name <> B[i].Name) or
+        (A[i].IsDir <> B[i].IsDir) or (A[i].Size <> B[i].Size) or
+        (A[i].MTime <> B[i].MTime) or (A[i].MatchPos <> B[i].MatchPos) or
+        (A[i].MatchLen <> B[i].MatchLen) or (A[i].IsContent <> B[i].IsContent)
+        or (A[i].LineNo <> B[i].LineNo) or (A[i].LineText <> B[i].LineText) or
+        (A[i].TextMatchPos <> B[i].TextMatchPos) or
+        (A[i].TextMatchLen <> B[i].TextMatchLen) then
+        Exit(False);
 end;
 
 procedure sgcBarChipOptions(Kind: TsgcFSearchBarChip;
@@ -838,13 +857,11 @@ end;
 procedure TsgcFSearchBarForm.DoStartSearch(Keep: Boolean);
 var
   vText: string;
-  vRow: TsgcFSearchEngineRow;
 begin
   Inc(FSeq);
   vText := Trim(edtSearch.Text);
-  FKeepPath := '';
-  if Keep and DoSelRow(vRow) then
-    FKeepPath := vRow.Path;
+  // a refresh that replaces a typed search still in flight is a new search
+  FKeep := Keep and not(FBusy and not FKeep);
   if (vText = '') or (FEngine = nil) then
   begin
     FBusy := False;
@@ -861,30 +878,91 @@ procedure TsgcFSearchBarForm.DoDeliver(Seq: Int64;
 const Rows: TsgcFSearchEngineRows; const Error, Warning: string;
 Fallback: Boolean);
 var
-  i, vSel: Integer;
+  vOldCount, vOldSel, vOldTop, vCount, vSel, vTop: Integer;
+  vSelPath, vTopPath: string;
+  vLocked, vIsError: Boolean;
+
+  function FindRow(const Path: string): Integer;
+  var
+    i: Integer;
+  begin
+    Result := -1;
+    if Path <> '' then
+      for i := 0 to High(FRows) do
+        if SameText(FRows[i].Path, Path) then
+          Exit(i);
+  end;
+
 begin
   if FDestroying or (Seq <> FSeq) then
     Exit;
   FBusy := False;
+  if FKeep and sgcBarSameRows(FRows, Rows.Items) then
+  begin
+    // background refresh, nothing the list paints changed: the list is left
+    // alone, the elapsed time is kept unless something else in the status moved
+    if (FTotal <> Rows.Total) or (FError <> Error) or (FWarning <> Warning) or
+      (FFallback <> Fallback) then
+      FElapsed := Rows.ElapsedMs;
+    FRows := Rows.Items;
+    FTotal := Rows.Total;
+    FError := Error;
+    FWarning := Warning;
+    FFallback := Fallback;
+    if DoStatusText(vIsError) <> FStatusShown then
+      pbStatus.Invalidate;
+    Exit;
+  end;
+  // a background refresh keeps the user's place, read it from the old rows
+  vOldCount := Length(FRows);
+  vOldSel := 0;
+  vOldTop := 0;
+  vSelPath := '';
+  vTopPath := '';
+  if FKeep and (vOldCount > 0) and lstResults.HandleAllocated then
+  begin
+    vOldSel := lstResults.ItemIndex;
+    vOldTop := lstResults.TopIndex;
+    if (vOldSel >= 0) and (vOldSel < vOldCount) then
+      vSelPath := FRows[vOldSel].Path;
+    if (vOldTop >= 0) and (vOldTop < vOldCount) then
+      vTopPath := FRows[vOldTop].Path;
+  end;
   FRows := Rows.Items;
   FTotal := Rows.Total;
   FElapsed := Rows.ElapsedMs;
   FError := Error;
   FWarning := Warning;
   FFallback := Fallback;
-  vSel := 0;
-  if FKeepPath <> '' then
-    for i := 0 to High(FRows) do
-      if SameText(FRows[i].Path, FKeepPath) then
-      begin
-        vSel := i;
-        Break;
-      end;
-  lstResults.Count := Length(FRows);
-  if Length(FRows) > 0 then
-    lstResults.ItemIndex := vSel;
-  DoLayout;
-  lstResults.Invalidate;
+  vCount := Length(FRows);
+  vSel := FindRow(vSelPath);
+  if vSel < 0 then
+    vSel := EnsureRange(vOldSel, 0, Max(0, vCount - 1));
+  vTop := FindRow(vTopPath);
+  if vTop < 0 then
+    vTop := vOldTop;
+  vTop := EnsureRange(vTop, 0, Max(0, vCount - CS_BAR_ROWS));
+  // LB_SETCOUNT resets the view and the selection, LB_SETCURSEL scrolls the
+  // selection into view: the view comes last, nothing is painted in between
+  vLocked := lstResults.HandleAllocated and lstResults.Visible;
+  if vLocked then
+    SendMessage(lstResults.Handle, WM_SETREDRAW, WPARAM(False), 0);
+  try
+    if lstResults.Count <> vCount then
+      lstResults.Count := vCount;
+    if vCount > 0 then
+    begin
+      lstResults.ItemIndex := vSel;
+      lstResults.TopIndex := vTop;
+    end;
+    DoLayout;
+  finally
+    if vLocked then
+      SendMessage(lstResults.Handle, WM_SETREDRAW, WPARAM(True), 0);
+  end;
+  // rows cover the list unless it shrank: only then the background is erased
+  if lstResults.HandleAllocated then
+    InvalidateRect(lstResults.Handle, nil, vCount < vOldCount);
   pbStatus.Invalidate;
 end;
 
@@ -1619,6 +1697,7 @@ begin
     DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   vR.Right := FLinkRect.Left - ScaleValue(16);
   vS := DoStatusText(vErr);
+  FStatusShown := vS;
   if (vS <> '') and (vR.Right > vR.Left) then
   begin
     C.Font.style := [];

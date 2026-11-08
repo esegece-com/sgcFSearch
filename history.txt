@@ -12,6 +12,10 @@
 Versions
 --------
 
+1.0.2: 2026 November
+
+ [*] Search bar: the results list no longer flickers or jumps back to the start when the index changes. A refresh with unchanged rows leaves the list alone, and a refresh with changed rows keeps the scroll position and the selected row.
+
 1.0.1: 2026 November
 
  [+] Wildcards in name words: * matches any run of characters and ? one character, matched against the whole name, in addition to the existing syntax.
