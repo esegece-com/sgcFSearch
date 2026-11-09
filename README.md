@@ -59,8 +59,11 @@ All words must match the file or folder name (case-insensitive, AND semantics). 
 | `grep:<text>` | content search: lines of indexed text files containing the text |
 | `regex:<pattern>` | content search with a regular expression |
 | `sym:<name>` | content search for a symbol (identifier) |
+| `case:yes`, `case:no` | this search only: `yes` is case sensitive, `no` ignores case; affects content search only and beats the `content_case` setting |
 
 With a content filter, plain words in the same query still have to appear in the file name. Name filters such as `ext:` and `in:` apply to content results too.
+
+Content search ignores case by default, so `grep:TODO` also finds `todo`. Add `case:yes` or `case:no` to decide for one search, or set `content_case` in `config.json` to change the default. File name matching always ignores case.
 
 Examples: `report ext:pdf mtime:month`, `^setup ext:exe in:~\Downloads`, `invoice*2026*.pdf in:~\Documents`, `grep:TODO ext:pas in:~\Projects`.
 
@@ -108,6 +111,7 @@ The app listens on `\\.\pipe\sgcFSearch-<user SID>` (the environment variable `S
 |---|---|
 | `{"id":1,"q":"report ext:pdf","limit":50}` | `{"id":1,"ok":true,"total":..,"ms":..,"content":false,"results":[{"path":..,"name":..,"dir":false,"size":..,"mtime":"2026-11-03T10:15:00Z","score":..,"match":[0,6]}]}` |
 | `{"grep":"TODO","mode":"literal","q":"ext:pas in:~","limit":50}` | same shape with `"content":true`; each result adds `line`, `text` and `tmatch` (`mode` is `literal`, `words`, `regex` or `sym`) |
+| `{"grep":"TODO","case":true}` | optional boolean `case`: `true` is case sensitive, `false` ignores case; when absent, a `case:` filter in `q` applies, otherwise the `content_case` setting |
 | `{"status":true}` | `state`, `files`, `folders`, `crawled`, `content_pending`, `content_indexed`, `pid`, `version`, `roots`, `log` |
 | `{"use":"C:\\Docs\\report.pdf","kind":"open"}` | `{"ok":true}`, feeds the ranking (`kind` is `open` or `copy`) |
 | `{"show":true,"q":"optional text"}` | `{"ok":true}`, shows the search bar |
@@ -128,6 +132,9 @@ Settings live in `%LOCALAPPDATA%\sgcFSearch\config.json`. The tray menu entry Fo
 | `skip` | `[]` | folders the crawler never opens |
 | `hotkey` | `"Alt+Shift+Space"` | global hotkey of the search bar: modifiers `Ctrl`, `Alt`, `Shift`, `Win` plus a letter, digit, `F1` to `F24` or `Space` |
 | `content_max_size_mb` | `16` | files larger than this are not content indexed |
+| `content_case` | `"insensitive"` | how content search treats case: `insensitive` always ignores it, `smart` (the previous behaviour) is case sensitive when the search text holds a capital letter, `sensitive` is always case sensitive; a missing or unknown value means `insensitive` |
+
+`config.json` is in the data folder, outside the program folder, and the installer never touches it, so settings such as `content_case` are kept across updates, and saving from the Folders dialog keeps them too. A hand edit takes effect at the next start of the app.
 
 The environment variable `SGCFSEARCH_HOME` replaces the data folder (used by the tests).
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>sgcFSearch Help</title>
-<meta name="description" content="sgcFSearch 1.0.2 user guide: whole-disk file search for Windows, search bar, query syntax, content search, command line and pipe API.">
+<meta name="description" content="sgcFSearch 1.0.3 user guide: whole-disk file search for Windows, search bar, query syntax, content search, command line and pipe API.">
 <style>
 :root {
   --bg: #ffffff;
@@ -243,7 +243,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <aside class="sidebar" aria-label="Table of contents">
   <div class="brand">
     <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="8" fill="#0b5cb5"/><circle cx="15" cy="15" r="7" fill="none" stroke="#fff" stroke-width="2.6"/><line x1="20" y1="20" x2="26" y2="26" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
-    <div><b>sgcFSearch</b><span>User Guide, version 1.0.2</span></div>
+    <div><b>sgcFSearch</b><span>User Guide, version 1.0.3</span></div>
   </div>
   <details class="toc" id="toc" open>
     <summary>Contents</summary>
@@ -286,7 +286,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
   <h1>sgcFSearch</h1>
   <p class="subtitle">User Guide</p>
   <div class="rule" aria-hidden="true"></div>
-  <p class="meta">Version 1.0.2<br>2026-11-08<br>eSeGeCe, <a href="https://www.esegece.com">https://www.esegece.com</a><br>Copyright &copy; 2026 eSeGeCe</p>
+  <p class="meta">Version 1.0.3<br>2026-11-09<br>eSeGeCe, <a href="https://www.esegece.com">https://www.esegece.com</a><br>Copyright &copy; 2026 eSeGeCe</p>
 </header>
 
 <nav class="print-toc" aria-label="Contents">
@@ -650,8 +650,9 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <tr><td><code>grep:</code></td><td>Text</td><td><a href="#content">Content search</a>: lines that contain the text.</td><td><code>grep:TODO</code>, <code>grep:"connection string"</code></td></tr>
 <tr><td><code>regex:</code></td><td>A regular expression</td><td>Content search: lines that match the expression.</td><td><code>regex:"TODO|FIXME"</code></td></tr>
 <tr><td><code>sym:</code></td><td>An identifier</td><td>Content search: definitions of a symbol in source files.</td><td><code>sym:TsgcFSearchEngine</code></td></tr>
+<tr><td><code>case:</code></td><td><code>yes</code> or <code>no</code></td><td><a href="#c-modes">Content search</a> only: <code>yes</code> is case-sensitive, <code>no</code> ignores case, for this search. It beats the <code>content_case</code> setting. File name matching is not affected.</td><td><code>grep:TODO case:yes</code></td></tr>
 </table></div>
-<p>When a filter is given twice, <code>ext:</code> and <code>type:</code> add to the list, <code>in:</code> widens the scope, <code>path:</code>, <code>size:</code> and <code>mtime:</code> must all hold, and for <code>kind:</code>, <code>re:</code>, <code>limit:</code>, <code>sort:</code>, <code>grep:</code>, <code>regex:</code> and <code>sym:</code> the last one wins. If a query has more than one content filter, <code>grep:</code> is used first, then <code>regex:</code>, then <code>sym:</code>.</p>
+<p>When a filter is given twice, <code>ext:</code> and <code>type:</code> add to the list, <code>in:</code> widens the scope, <code>path:</code>, <code>size:</code> and <code>mtime:</code> must all hold, and for <code>kind:</code>, <code>re:</code>, <code>limit:</code>, <code>sort:</code>, <code>grep:</code>, <code>regex:</code>, <code>sym:</code> and <code>case:</code> the last one wins. If a query has more than one content filter, <code>grep:</code> is used first, then <code>regex:</code>, then <code>sym:</code>.</p>
 <p>An invalid value never stops the search. It is ignored and reported in the status line, for example <i>invalid size: 10q</i>, <i>unknown type: pics</i>, <i>invalid mtime: lastweek</i> or <i>empty value: ext:</i>.</p>
 
 <h3 id="q-home">The home folder <code>~</code></h3>
@@ -779,7 +780,9 @@ System Volume Information  .next  .nuxt  .angular  .parcel-cache  .dart_tool
 <tr><td>Symbol</td><td><code>sym:&lt;name&gt;</code></td><td><code>sym</code></td><td>it looks like a definition of the name, see <a href="#c-sym">Symbol search</a></td></tr>
 <tr><td>Words</td><td>(used by the <a href="#c-fallback">fallback</a>)</td><td><code>words</code></td><td>the file holds every word, and the line holds at least one of them</td></tr>
 </table></div>
-<p><b>Smart-case.</b> Content search is case-insensitive, unless the pattern contains an uppercase letter: then it is case-sensitive. <code>grep:todo</code> finds "TODO" and "todo", <code>grep:TODO</code> finds only "TODO". In <code>regex:</code> and <code>sym:</code>, escaped sequences such as <code>\W</code> do not count as uppercase.</p>
+<p><b>Case.</b> Content search ignores case by default: <code>grep:todo</code> and <code>grep:TODO</code> both find "TODO" and "todo". A capital letter in the search text changes nothing.</p>
+<p>Add <code>case:yes</code> (case-sensitive) or <code>case:no</code> (ignores case) to decide for one search, in any mode: <code>grep:TODO case:yes</code> finds only "TODO". File name matching always ignores case.</p>
+<p>To change the default, set <a href="#cfg-json"><code>content_case</code></a> in <code>config.json</code>. <code>sensitive</code> is always case-sensitive. <code>smart</code> is the previous behaviour: a search text with an uppercase letter is case-sensitive, and in <code>regex:</code> and <code>sym:</code>, escaped sequences such as <code>\W</code> do not count as uppercase. The value is kept across updates, because <code>config.json</code> is in the data folder, and it takes effect at the next start.</p>
 <p><b>Results.</b> Each hit line is one result, with the file, the line number and the line text. Up to 5 lines are reported per file, and the limit counts lines, not files. Every candidate file is read again at search time to confirm the match, so results never come from stale index data. In the bar, content rows show <code>line N:</code> and the text.</p>
 <div class="tip"><b>Tip.</b> Quote patterns with spaces: <code>grep:"connection string"</code>, <code>regex:"class \w+Helper"</code>.</div>
 
@@ -860,7 +863,7 @@ System Volume Information  .next  .nuxt  .angular  .parcel-cache  .dart_tool
 <tr><td>Drives (none checked = all fixed drives)</td><td>Check the drives to index. With no drive checked, every fixed drive is indexed.</td><td><code>drives</code></td></tr>
 <tr><td>Search bar hotkey (for example Alt+Shift+Space)</td><td>One or more modifiers (<code>Ctrl</code>, <code>Alt</code>, <code>Shift</code>, <code>Win</code>) and one key (<code>A</code> to <code>Z</code>, <code>0</code> to <code>9</code>, <code>F1</code> to <code>F24</code>, <code>Space</code>), joined with <code>+</code>. An invalid entry is rejected with a message.</td><td><code>hotkey</code></td></tr>
 </table></div>
-<p><b>OK</b> saves the settings and restarts sgcFSearch in the background to apply them. <b>Cancel</b> closes the dialog without changes. The content size cap is not in the dialog, edit <code>content_max_size_mb</code> in <a href="#cfg-json">config.json</a> instead.</p>
+<p><b>OK</b> saves the settings and restarts sgcFSearch in the background to apply them. <b>Cancel</b> closes the dialog without changes. The content size cap and the case setting are not in the dialog, edit <code>content_max_size_mb</code> and <code>content_case</code> in <a href="#cfg-json">config.json</a> instead. Saving from the dialog keeps them.</p>
 
 <h3 id="login">Start at login</h3>
 <p>Start at login writes the value <code>sgcFSearch</code> = <code>"&lt;path&gt;\sgcFSearch.exe" --background</code> under <code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code>. At sign-in the app starts in the tray without showing the bar. Three places control the same entry: the tray menu item, the start at login task of the setup, and <code>sgcfs install --login</code> / <code>sgcfs uninstall</code> for the manual installation.</p>
@@ -889,7 +892,8 @@ System Volume Information  .next  .nuxt  .angular  .parcel-cache  .dart_tool
   "skip": [],
   "hotkey": "Alt+Shift+Space",
   "drives": [],
-  "content_max_size_mb": 16
+  "content_max_size_mb": 16,
+  "content_case": "insensitive"
 }</code></pre>
 <div class="tbl"><table>
 <tr><th>Key</th><th>Type</th><th>Default</th><th>Meaning</th></tr>
@@ -898,6 +902,7 @@ System Volume Information  .next  .nuxt  .angular  .parcel-cache  .dart_tool
 <tr><td><code>hotkey</code></td><td>string</td><td><code>"Alt+Shift+Space"</code></td><td>Global hotkey of the search bar: modifiers <code>Ctrl</code> (or <code>Control</code>), <code>Alt</code>, <code>Shift</code>, <code>Win</code> (or <code>Windows</code>) plus a letter, a digit, <code>F1</code> to <code>F24</code> or <code>Space</code>. Case and spaces are ignored.</td></tr>
 <tr><td><code>drives</code></td><td>array of strings</td><td><code>[]</code></td><td>Drives to index, for example <code>["C:\\", "D:\\"]</code>. Empty means every fixed drive.</td></tr>
 <tr><td><code>content_max_size_mb</code></td><td>number</td><td><code>16</code></td><td>Files larger than this many MB are not content indexed.</td></tr>
+<tr><td><code>content_case</code></td><td>string</td><td><code>"insensitive"</code></td><td>How <a href="#c-modes">content search</a> treats case: <code>insensitive</code> always ignores it, <code>smart</code> (the previous behaviour) is case-sensitive when the search text holds an uppercase letter, <code>sensitive</code> is always case-sensitive. Case is ignored in the value. A missing or unknown value means <code>insensitive</code>. The value is kept across updates, because <code>config.json</code> is in the data folder.</td></tr>
 </table></div>
 <div class="note"><b>Note.</b> Backslashes must be doubled in JSON: <code>"C:\\Projects"</code>. The app reads <code>config.json</code> when it starts. After editing the file by hand, restart the app: <code>sgcfs stop</code>, then start sgcFSearch again. The Folders dialog restarts it for you.</div>
 
@@ -962,7 +967,7 @@ sgcfs stop</code></pre>
 sgcfs 'package.json !node_modules\ | ForEach-Object { Split-Path $_ }</code></pre>
 <p><code>sgcfs status</code> prints one value per line (example values):</p>
 <pre><code>state            ready
-version          1.0.2
+version          1.0.3
 pid              12345
 files            3,404,349
 folders          447,577
@@ -1016,7 +1021,7 @@ log              C:\Users\you\AppData\Local\sgcFSearch\daemon.log</code></pre>
 </table></div>
 
 <h4>Grep</h4>
-<p>A content search with the pattern apart from the query. <code>q</code> provides the name filters. <code>mode</code> is <code>literal</code> (default), <code>words</code>, <code>regex</code> or <code>sym</code>. The response has the search shape with <code>"content":true</code>.</p>
+<p>A content search with the pattern apart from the query. <code>q</code> provides the name filters. <code>mode</code> is <code>literal</code> (default), <code>words</code>, <code>regex</code> or <code>sym</code>. The optional boolean <code>case</code> sets the case for this search: <code>true</code> is case-sensitive, <code>false</code> ignores case. Without it, a <code>case:</code> filter in <code>q</code> applies, otherwise the <code>content_case</code> setting. The response has the search shape with <code>"content":true</code>.</p>
 <pre><code>{"id":2,"grep":"TODO","mode":"literal","q":"ext:pas in:~","limit":50}</code></pre>
 <pre><code>{"id":2,"ok":true,"total":3,"ms":4.2,"content":true,"results":[
  {"path":"C:\\Users\\you\\Projects\\Main.pas","name":"Main.pas","dir":false,"size":8120,
@@ -1025,7 +1030,7 @@ log              C:\Users\you\AppData\Local\sgcFSearch\daemon.log</code></pre>
 <h4>Status</h4>
 <pre><code>{"id":3,"status":true}</code></pre>
 <pre><code>{"id":3,"ok":true,"state":"ready","files":5080000,"folders":610000,"crawled":123456,
- "content_pending":42,"content_indexed":36000,"pid":1234,"version":"1.0.2",
+ "content_pending":42,"content_indexed":36000,"pid":1234,"version":"1.0.3",
  "roots":["C:\\","D:\\"],"log":"C:\\Users\\you\\AppData\\Local\\sgcFSearch\\daemon.log"}</code></pre>
 <p><code>state</code> is one of <code>starting</code>, <code>loading</code>, <code>crawling</code>, <code>catchup</code>, <code>ready</code>, <code>stopping</code>, <code>stopped</code> (see <a href="#start-states">Index states</a>). <code>roots</code> lists the indexed drives.</p>
 
@@ -1207,7 +1212,7 @@ app: hotkey Win+Shift+F active</code></pre>
   <li>Online-only cloud files are not read. Make the file available offline to have it indexed.</li>
   <li>PDF and legacy Office files need a Windows IFilter for their extension.</li>
   <li>After a start, the content indexer may still be reading files: watch for <i>N files being read</i> in the tray tooltip, or <code>content pending</code> in <code>sgcfs status</code>.</li>
-  <li>An uppercase letter makes the search case-sensitive (<a href="#c-modes">smart-case</a>).</li>
+  <li>Content search ignores case, unless <code>case:yes</code> or the <a href="#cfg-json"><code>content_case</code></a> setting <a href="#c-modes">makes it case-sensitive</a>.</li>
   <li>Plain words next to a content filter must match the file name.</li>
 </ul>
 
@@ -1224,6 +1229,12 @@ app: hotkey Win+Shift+F active</code></pre>
 <!-- ============================================================ 15 -->
 <section class="chapter" id="history">
 <h2><span class="num">15</span>Version history</h2>
+<h3 id="v103">1.0.3, November 2026</h3>
+<ul>
+  <li>Content search (<code>grep:</code>, <code>regex:</code>, <code>sym:</code>) now ignores case by default. Before, a capital letter in the search text made it case sensitive.</li>
+  <li><code>case:yes</code> and <code>case:no</code> choose the case of one content search. The pipe API grep request has the same option in its <code>"case"</code> field.</li>
+  <li><code>content_case</code> setting in <code>config.json</code>: <code>insensitive</code> (default), <code>smart</code> (the previous behaviour) or <code>sensitive</code>. The setting is kept across updates.</li>
+</ul>
 <h3 id="v102">1.0.2, November 2026</h3>
 <ul>
   <li>Search bar: the results list no longer flickers or jumps back to the start when the index changes. A refresh with unchanged rows leaves the list alone, and a refresh with changed rows keeps the scroll position and the selected row.</li>
@@ -1247,7 +1258,7 @@ app: hotkey Win+Shift+F active</code></pre>
   <li>Single instance: a second start shows the search bar of the running instance.</li>
   <li>Distributed as a signed per user installer (recommended) and as a zip. The setup offers the PATH entry and Start at login as tasks; with the zip, <code>sgcfs install</code> adds them.</li>
 </ul>
-<p class="footer">sgcFSearch 1.0.2. Copyright &copy; 2026 eSeGeCe. <a href="https://www.esegece.com">https://www.esegece.com</a></p>
+<p class="footer">sgcFSearch 1.0.3. Copyright &copy; 2026 eSeGeCe. <a href="https://www.esegece.com">https://www.esegece.com</a></p>
 </section>
 
 </main>

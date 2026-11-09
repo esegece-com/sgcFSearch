@@ -76,7 +76,8 @@ const
     + '  grep:<text>   file content contains text' + sLineBreak +
     '  regex:<re>    file content matches a regular expression' + sLineBreak +
     '  sym:<name>    symbol definitions in source files' + sLineBreak +
-    '  limit:N       maximum results' + sLineBreak +
+    '  case:yes|no   content search: yes is case sensitive, no ignores case' +
+    sLineBreak + '  limit:N       maximum results' + sLineBreak +
     '  sort:name|size|date|rank  (-asc / -desc suffix, leading - reverses)' +
     sLineBreak + sLineBreak +
     'Exit code: 0 results, 1 no results, 2 error or daemon unavailable.' +

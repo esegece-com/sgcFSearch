@@ -63,6 +63,11 @@ type
     fslsNotADirectory, // the path is a file
     fslsError); // any other failure (or cancelled)
 
+  /// How content search treats the case of the search text.
+  TsgcFSearchGrepCase = (fsgcInsensitive, // always ignores case (default)
+    fsgcSmart, // a capital letter in the search text makes it case sensitive
+    fsgcSensitive); // always case sensitive
+
   /// Maps file attributes + reparse tag to SGCFS_FLAG_* bits. Only name
   /// surrogate reparse points get SGCFS_FLAG_REPARSE; cloud placeholders and
   /// other reparse tags are plain files / folders (SGCFS_FLAG_OFFLINE if not

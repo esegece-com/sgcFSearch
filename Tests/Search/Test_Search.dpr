@@ -169,6 +169,25 @@ begin
   Check((q.NameRegex = '^IMG_\d+') and (Length(q.Warnings) = 1), 'parse re');
   q := sgcFSearchParseQuery('limit:5 limit:x', vNow);
   Check((q.Limit = 5) and (Length(q.Warnings) = 1), 'parse limit');
+  q := sgcFSearchParseQuery('case:yes', vNow);
+  Check(q.HasCase and (q.CaseMode = fsgcSensitive) and (Length(q.Terms) = 0) and
+    not q.HasNameTerms and not q.HasContentFilters and (Length(q.Warnings) = 0),
+    'parse case:yes');
+  q := sgcFSearchParseQuery('CASE:No grep:x report', vNow);
+  Check(q.HasCase and (q.CaseMode = fsgcInsensitive) and (q.Grep = 'x') and
+    (Length(q.Terms) = 1) and (q.Terms[0].Text = 'report') and
+    (Length(q.Warnings) = 0), 'parse case:no');
+  q := sgcFSearchParseQuery('case:yes case:no', vNow);
+  Check(q.HasCase and (q.CaseMode = fsgcInsensitive), 'case: last one wins');
+  q := sgcFSearchParseQuery('case:maybe report', vNow);
+  Check((not q.HasCase) and (Length(q.Terms) = 1) and
+    (q.Terms[0].Text = 'report') and (Length(q.Warnings) = 1) and
+    (q.Warnings[0] = 'invalid case: maybe'), 'case invalid');
+  q := sgcFSearchParseQuery('case:', vNow);
+  Check((not q.HasCase) and (Length(q.Terms) = 0) and (Length(q.Warnings) = 1),
+    'case empty');
+  q := sgcFSearchParseQuery('report', vNow);
+  Check(not q.HasCase, 'case not given');
   q := sgcFSearchParseQuery('sort:name', vNow);
   Check((q.Sort = fssName) and not q.SortDesc, 'sort name');
   q := sgcFSearchParseQuery('sort:size', vNow);
@@ -457,7 +476,7 @@ end;
 
 procedure TestSearch;
 var
-  vR: TsgcFSearchResults;
+  vR, vOnly: TsgcFSearchResults;
   S: string;
   i: Integer;
   vItems: TsgcFSearchListingItems;
@@ -601,6 +620,11 @@ begin
   GS.Search('ext:txt limit:1', 0, vR);
   Check((Length(vR.Items) = 1) and (vR.Total = 8),
     'limit: total: ' + IntToStr(vR.Total));
+  // a query holding only case: behaves like one holding only limit:
+  GS.Search('limit:100', 0, vR);
+  GS.Search('case:yes', 100, vOnly);
+  Check((vR.Total > 0) and (vOnly.Total = vR.Total) and
+    (Length(vOnly.Items) = Length(vR.Items)), 'case: alone like limit: alone');
   // tombstones
   Check(Total('gone') = 1, 'gone before');
   SetLength(vItems, 1);

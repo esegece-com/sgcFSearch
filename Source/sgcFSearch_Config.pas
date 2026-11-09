@@ -15,7 +15,9 @@ interface
 
 uses
   Winapi.Windows, System.SysUtils, System.Classes, System.JSON, System.IOUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  // sgc
+  sgcFSearch_Types;
 
 const
   SGCFS_CONFIG_FILE = 'config.json';
@@ -26,7 +28,7 @@ const
 type
   /// User settings, stored as DataDir\config.json:
   /// {"roots":["~"],"skip":[],"hotkey":"Alt+Shift+Space","drives":[],
-  /// "content_max_size_mb":16}
+  /// "content_max_size_mb":16,"content_case":"insensitive"}
   TsgcFSearchConfig = class
   private
     FRoots: TArray<string>;
@@ -34,12 +36,14 @@ type
     FHotkey: string;
     FDrives: TArray<string>;
     FContentMaxSizeMB: Integer;
+    FContentCase: TsgcFSearchGrepCase;
   public
     constructor Create;
     /// Restores the defaults.
     procedure SetDefaults;
-    /// Loads a JSON file; keys not present keep their current value. Returns
-    /// False (settings unchanged) if the file is missing or not valid JSON.
+    /// Loads a JSON file; keys not present keep their current value, except
+    /// content_case, where a missing key means insensitive. Returns False
+    /// (settings unchanged) if the file is missing or not valid JSON.
     function LoadFromFile(const FileName: string): Boolean;
     /// Writes the JSON file (UTF-8, no BOM, temp file + replace).
     procedure SaveToFile(const FileName: string);
@@ -57,6 +61,11 @@ type
     /// Content indexing size cap per file, default 16 MB.
     property ContentMaxSizeMB: Integer read FContentMaxSizeMB
       write FContentMaxSizeMB;
+    /// Content search case: insensitive (default), smart (a capital letter
+    /// in the search text makes it case sensitive) or sensitive. The engine
+    /// reads it at start, a hand edit takes effect at the next start.
+    property ContentCase: TsgcFSearchGrepCase read FContentCase
+      write FContentCase;
   end;
 
   /// Data folder: %SGCFSEARCH_HOME% if set, else %LOCALAPPDATA%\sgcFSearch.
@@ -71,9 +80,15 @@ function sgcFSearchLogFileName: string;
 
 implementation
 
+uses
+  // sgc
+  sgcFSearch_Log;
+
 const
   CS_DEFAULT_HOTKEY = 'Alt+Shift+Space';
   CS_DEFAULT_CONTENT_MAX_MB = 16;
+  CS_CONTENT_CASE: array [TsgcFSearchGrepCase] of string = ('insensitive',
+    'smart', 'sensitive');
 
 function DoGetEnv(const Name: string): string;
 begin
@@ -154,6 +169,20 @@ begin
     Result.Add(Value[i]);
 end;
 
+function DoReadContentCase(const Text: string;
+  var Value: TsgcFSearchGrepCase): Boolean;
+var
+  i: TsgcFSearchGrepCase;
+begin
+  Result := False;
+  for i := Low(TsgcFSearchGrepCase) to High(TsgcFSearchGrepCase) do
+    if SameText(Text, CS_CONTENT_CASE[i]) then
+    begin
+      Value := i;
+      Exit(True);
+    end;
+end;
+
 { TsgcFSearchConfig }
 
 constructor TsgcFSearchConfig.Create;
@@ -169,6 +198,7 @@ begin
   FHotkey := CS_DEFAULT_HOTKEY;
   FDrives := nil;
   FContentMaxSizeMB := CS_DEFAULT_CONTENT_MAX_MB;
+  FContentCase := fsgcInsensitive;
 end;
 
 function TsgcFSearchConfig.ExpandedRoots: TArray<string>;
@@ -227,6 +257,11 @@ begin
     vVal := vObj.GetValue('content_max_size_mb');
     if vVal is TJSONNumber then
       FContentMaxSizeMB := TJSONNumber(vVal).AsInt;
+    // a missing or unknown value means insensitive, never the previous one
+    FContentCase := fsgcInsensitive;
+    vVal := vObj.GetValue('content_case');
+    if (vVal <> nil) and not DoReadContentCase(vVal.Value, FContentCase) then
+      sgcFSearchLog('config: unknown content_case value: ' + vVal.ToJSON);
     Result := True;
   finally
     vJSON.Free;
@@ -245,6 +280,7 @@ begin
     vObj.AddPair('hotkey', FHotkey);
     vObj.AddPair('drives', DoStringsToJSON(FDrives));
     vObj.AddPair('content_max_size_mb', TJSONNumber.Create(FContentMaxSizeMB));
+    vObj.AddPair('content_case', CS_CONTENT_CASE[FContentCase]);
     vTmp := FileName + '.tmp';
     TFile.WriteAllBytes(vTmp, TEncoding.UTF8.GetBytes(vObj.Format(2)));
   finally

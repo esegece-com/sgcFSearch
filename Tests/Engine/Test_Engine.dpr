@@ -153,7 +153,7 @@ begin
   WriteText(P('sizes\rank_test_b.dat'), 'b');
 end;
 
-procedure WriteConfig(const Home, Tree: string);
+procedure WriteConfig(const Home, Tree: string; const ContentCase: string = '');
 var
   vO: TJSONObject;
 begin
@@ -163,6 +163,8 @@ begin
     vO.AddPair('roots', TJSONArray.Create.Add(Tree));
     vO.AddPair('drives', TJSONArray.Create.Add(Tree));
     vO.AddPair('skip', TJSONArray.Create);
+    if ContentCase <> '' then
+      vO.AddPair('content_case', ContentCase);
     TFile.WriteAllText(Home + '\config.json', vO.ToJSON, TEncoding.ANSI);
   finally
     vO.Free;
@@ -340,6 +342,73 @@ begin
   Check(Length(R.Items) = 0, 'fallback honours ext:');
   R := Rows(E, 'nosuchwordanywhere');
   Check(not R.IsContentResult and (R.Total = 0), 'no hit anywhere');
+end;
+
+function ReqTotal(E: TsgcFSearchEngine; const Req: string): Integer;
+var
+  vO: TJSONObject;
+begin
+  Result := -1;
+  vO := JObj(E.HandleRequest(Req));
+  if vO <> nil then
+    try
+      if vO.GetValue<Boolean>('ok') then
+        Result := vO.GetValue<Integer>('total');
+    finally
+      vO.Free;
+    end;
+end;
+
+// no content_case key in config.json: content search ignores case
+procedure TestContentCase(E: TsgcFSearchEngine);
+var
+  R, R2: TsgcFSearchEngineRows;
+begin
+  R := Rows(E, 'grep:ZEBRACORN');
+  Check(R.IsContentResult and (Length(R.Items) = 2) and
+    (Copy(R.Items[0].LineText, R.Items[0].TextMatchPos + 1,
+    R.Items[0].TextMatchLen) = 'zebracorn'), 'no setting: capitals find text');
+  Check(Length(Rows(E, 'grep:frobnicateall').Items) = 3,
+    'no setting: lowercase finds mixed case');
+  // case: beats the setting
+  Check(Length(Rows(E, 'grep:ZEBRACORN case:yes').Items) = 0,
+    'case:yes beats the default');
+  Check(Length(Rows(E, 'grep:zebracorn case:yes').Items) = 2,
+    'case:yes finds the exact case');
+  Check(Length(Rows(E, 'grep:frobnicateall case:yes').Items) = 0,
+    'case:yes lowercase miss');
+  Check(Length(Rows(E, 'grep:ZEBRACORN case:no').Items) = 2, 'case:no');
+  // the words fallback follows the setting and case:
+  R := Rows(E, 'QUASARVORTEX');
+  Check(R.IsContentResult and (Length(R.Items) = 1) and AllEndWith(R,
+    'unique.txt'), 'no setting: fallback ignores case');
+  R := Rows(E, 'QUASARVORTEX case:yes');
+  Check(not R.IsContentResult and (R.Total = 0), 'fallback case:yes miss');
+  R := Rows(E, 'quasarvortex case:yes');
+  Check(R.IsContentResult and (Length(R.Items) = 1), 'fallback case:yes match');
+  // only an option: behaves like a query holding only limit:
+  R := Rows(E, 'limit:100');
+  R2 := Rows(E, 'case:yes');
+  Check((R.Total > 0) and not R2.IsContentResult and (R2.Total = R.Total) and
+    (Length(R2.Items) = Length(R.Items)), 'case: alone like limit: alone');
+  // the direct Grep method
+  E.Grep('ZEBRACORN', fsgmLiteral, '', 100, R);
+  Check(Length(R.Items) = 2, 'Grep follows the setting');
+  E.Grep('ZEBRACORN', fsgmLiteral, 'case:yes', 100, R);
+  Check(Length(R.Items) = 0, 'Grep honours case:');
+  // pipe: "case" field, then case: filter, then setting
+  Check(ReqTotal(E, '{"grep":"ZEBRACORN"}') = 2, 'pipe: setting');
+  Check(ReqTotal(E, '{"grep":"ZEBRACORN","case":true}') = 0, 'pipe: case true');
+  Check(ReqTotal(E, '{"grep":"zebracorn","case":true}') = 2,
+    'pipe: case true, exact case');
+  Check(ReqTotal(E, '{"grep":"ZEBRACORN","q":"case:yes"}') = 0,
+    'pipe: filter in q');
+  Check(ReqTotal(E, '{"grep":"ZEBRACORN","q":"case:yes","case":false}') = 2,
+    'pipe: case false beats filter');
+  Check(ReqTotal(E, '{"grep":"ZEBRACORN","q":"case:no","case":true}') = 0,
+    'pipe: case true beats filter');
+  Check(ReqTotal(E, '{"grep":"ZEBRACORN","case":"yes"}') = 2,
+    'pipe: non boolean case ignored');
 end;
 
 procedure TestLive(E: TsgcFSearchEngine; Rec: TRecorder);
@@ -683,6 +752,75 @@ begin
   end;
 end;
 
+function StartWithCase(const Value: string): TsgcFSearchEngine;
+var
+  vE: TsgcFSearchEngine;
+begin
+  WriteConfig(GHome, GTree, Value);
+  vE := TsgcFSearchEngine.Create(GHome);
+  vE.Start;
+  Check(WaitUntil(function: Boolean
+    begin
+      Result := vE.State = fsesReady;
+    end, 30000), 'content_case ' + Value + ' reaches ready');
+  Result := vE;
+end;
+
+procedure TestCaseSetting;
+var
+  E: TsgcFSearchEngine;
+  R: TsgcFSearchEngineRows;
+begin
+  // smart restores the capital letter rule
+  E := StartWithCase('smart');
+  try
+    Check(Length(Rows(E, 'grep:ZEBRACORN').Items) = 0, 'smart: capital miss');
+    Check(Length(Rows(E, 'grep:frobnicateall').Items) = 3,
+      'smart: no capital ignores case');
+    Check(Length(Rows(E, 'grep:FrobnicateAll').Items) = 3,
+      'smart: capital, exact case');
+    Check(Length(Rows(E, 'grep:ZEBRACORN case:no').Items) = 2,
+      'case:no beats smart');
+    Check(Length(Rows(E, 'grep:frobnicateall case:yes').Items) = 0,
+      'case:yes beats smart');
+    R := Rows(E, 'QUASARVORTEX');
+    Check(not R.IsContentResult and (R.Total = 0), 'smart: fallback capital');
+    R := Rows(E, 'quasarvortex');
+    Check(R.IsContentResult and (Length(R.Items) = 1),
+      'smart: fallback no capital');
+    Check(ReqTotal(E, '{"grep":"ZEBRACORN"}') = 0, 'smart: pipe setting');
+    Check(ReqTotal(E, '{"grep":"ZEBRACORN","case":false}') = 2,
+      'smart: pipe case false');
+    E.Stop;
+  finally
+    E.Free;
+  end;
+  E := StartWithCase('sensitive');
+  try
+    Check(Length(Rows(E, 'grep:frobnicateall').Items) = 0,
+      'sensitive: no capital miss');
+    Check(Length(Rows(E, 'grep:FrobnicateAll').Items) = 3,
+      'sensitive: exact case');
+    Check(Length(Rows(E, 'grep:FROBNICATEALL case:no').Items) = 3,
+      'case:no beats sensitive');
+    R := Rows(E, 'frobnicateall');
+    Check(not R.IsContentResult, 'sensitive: fallback miss');
+    R := Rows(E, 'FrobnicateAll');
+    Check(R.IsContentResult and (Length(R.Items) = 3),
+      'sensitive: fallback exact case');
+    R := Rows(E, 'frobnicateall case:no');
+    Check(R.IsContentResult and (Length(R.Items) = 3),
+      'sensitive: fallback case:no');
+    Check(ReqTotal(E, '{"grep":"frobnicateall"}') = 0,
+      'sensitive: pipe setting');
+    Check(ReqTotal(E, '{"grep":"frobnicateall","case":false}') = 3,
+      'sensitive: pipe case false');
+    E.Stop;
+  finally
+    E.Free;
+  end;
+end;
+
 procedure TestStopDuringCrawl;
 var
   E: TsgcFSearchEngine;
@@ -781,6 +919,7 @@ begin
       try
         TestFirstRun(E, vRec);
         TestContent(E);
+        TestContentCase(E);
         TestLive(E, vRec);
         TestUsage(E);
         TestRequests(E);
@@ -790,6 +929,7 @@ begin
       end;
       vRec.States.Clear;
       TestSecondRun(vRec);
+      TestCaseSetting;
     finally
       vRec.Free;
     end;

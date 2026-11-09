@@ -242,6 +242,11 @@ begin
   Result := Grep.Search(Content, Pattern, Mode, 1000, nil, Hits);
 end;
 
+function MatchText(const Hit: TsgcFSearchGrepHit): string;
+begin
+  Result := Copy(Hit.LineText, Hit.MatchPos, Hit.MatchLen);
+end;
+
 procedure TestIndexAndGrep;
 var
   vIndex: TsgcFSearchIndex;
@@ -299,7 +304,9 @@ begin
     vCount := Length(vContent.Candidates(nil));
     Check((vCount >= 13) and (Length(vContent.Candidates(['ab'])) = vCount),
       'short literal no constraint');
+    Check(vGrep.CaseMode = fsgcInsensitive, 'case mode default insensitive');
     // literal + smart-case
+    vGrep.CaseMode := fsgcSmart;
     Check((DoGrep(vGrep, vContent, 'mixedcase', fsgmLiteral, vHits) = 1) and
       (HitsIn(vHits, 'utf8.txt') = 1) and (vHits[0].LineNo = 1) and
       (vHits[0].LineText = 'Hello UTF8 caf'#$00E9' MixedCase needleone') and
@@ -360,6 +367,47 @@ begin
       (HitsIn(vHits, 'script.py') = 1), 'symbol class');
     Check((DoGrep(vGrep, vContent, 'TWidgetMaker', fsgmSymbol, vHits) >= 1) and
       (vHits[0].LineNo = 4), 'symbol pascal class');
+    // insensitive: a capital letter changes nothing
+    vGrep.CaseMode := fsgcInsensitive;
+    Check((DoGrep(vGrep, vContent, 'MIXEDCASE', fsgmLiteral, vHits) = 1) and
+      (HitsIn(vHits, 'utf8.txt') = 1) and (vHits[0].MatchPos = 17) and
+      (vHits[0].MatchLen = 9) and (MatchText(vHits[0]) = 'MixedCase'),
+      'insensitive literal');
+    Check(DoGrep(vGrep, vContent, 'mixedcase', fsgmLiteral, vHits) = 1,
+      'insensitive literal, no capital');
+    Check((DoGrep(vGrep, vContent, 'SIXTEEN WIDE', fsgmWords, vHits) = 1) and
+      (HitsIn(vHits, 'utf16.txt') = 1) and (MatchText(vHits[0]) = 'wide'),
+      'insensitive words');
+    Check((DoGrep(vGrep, vContent, 'COMPUTE_\w+\(', fsgmRegex, vHits) = 2) and
+      (vHits[0].MatchPos = 5) and (MatchText(vHits[0]) = 'compute_total('),
+      'insensitive regex');
+    Check((DoGrep(vGrep, vContent, 'COMPUTETOTAL', fsgmSymbol, vHits) = 1) and
+      (vHits[0].LineNo = 7) and (MatchText(vHits[0]) = 'function ComputeTotal'),
+      'insensitive symbol');
+    // sensitive: a text without capitals does not ignore case either
+    vGrep.CaseMode := fsgcSensitive;
+    Check((DoGrep(vGrep, vContent, 'MixedCase', fsgmLiteral, vHits) = 1) and
+      (vHits[0].MatchPos = 17) and (MatchText(vHits[0]) = 'MixedCase'),
+      'sensitive literal match');
+    Check(DoGrep(vGrep, vContent, 'mixedcase', fsgmLiteral, vHits) = 0,
+      'sensitive literal, no capital');
+    Check(DoGrep(vGrep, vContent, 'MIXEDCASE', fsgmLiteral, vHits) = 0,
+      'sensitive literal miss');
+    Check((DoGrep(vGrep, vContent, 'sixteen wide', fsgmWords, vHits) = 1) and
+      (MatchText(vHits[0]) = 'wide'), 'sensitive words match');
+    Check(DoGrep(vGrep, vContent, 'mixedcase needleone', fsgmWords, vHits) = 0,
+      'sensitive words, no capital');
+    Check((DoGrep(vGrep, vContent, 'compute_\w+\(', fsgmRegex, vHits) = 2) and
+      (vHits[0].MatchPos = 5) and (MatchText(vHits[0]) = 'compute_total('),
+      'sensitive regex match');
+    Check(DoGrep(vGrep, vContent, 'mixedcase', fsgmRegex, vHits) = 0,
+      'sensitive regex, no capital');
+    Check((DoGrep(vGrep, vContent, 'ComputeTotal', fsgmSymbol, vHits) = 1) and
+      (vHits[0].LineNo = 7) and (MatchText(vHits[0]) = 'function ComputeTotal'),
+      'sensitive symbol match');
+    Check(DoGrep(vGrep, vContent, 'computetotal', fsgmSymbol, vHits) = 0,
+      'sensitive symbol, no capital');
+    vGrep.CaseMode := fsgcSmart;
     // filter callback
     vCount := vGrep.Search(vContent, 'marker', fsgmLiteral, 1000,
       function(Path: string): Boolean

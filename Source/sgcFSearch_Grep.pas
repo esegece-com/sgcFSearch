@@ -19,8 +19,9 @@ unit sgcFSearch_Grep;
   (re-extracting office / pdf files), on a few worker threads. Results never
   come from stale index data: a file that is gone or changed is re-queued to
   Indexer (when assigned).
-  - Smart-case: case-sensitive only when the pattern holds an uppercase
-  letter (escaped regex chars such as \W do not count).
+  - Case (CaseMode): ignored by default (fsgcInsensitive), always respected
+  with fsgcSensitive; fsgcSmart is case-sensitive only when the pattern holds
+  an uppercase letter (escaped regex chars such as \W do not count).
   - Words mode: the file must hold every word; reported lines hold any word.
   - Limit is the maximum number of hits (lines); MaxLinesPerFile the lines
   reported per file. Hits are grouped per file, in docid order.
@@ -32,7 +33,7 @@ uses
   Winapi.Windows, System.SysUtils, System.Classes, System.SyncObjs,
   System.RegularExpressions,
   // sgc
-  sgcFSearch_Extract, sgcFSearch_Trigram;
+  sgcFSearch_Types, sgcFSearch_Extract, sgcFSearch_Trigram;
 
 const
   SGCFS_GREP_LINE_MAX = 200;
@@ -62,6 +63,7 @@ type
     FFilesVerified: Integer;
     FFilesMatched: Integer;
     FCancelled: Boolean;
+    FCaseMode: TsgcFSearchGrepCase;
   public
     constructor Create;
     /// Smart-case rule (regex / symbol: escaped chars ignored).
@@ -87,6 +89,8 @@ type
     property ThreadCount: Integer read FThreadCount write FThreadCount;
     /// Files larger than this are not verified (default 64 MB).
     property MaxBytes: Int64 read FMaxBytes write FMaxBytes;
+    /// Case handling of Search, default fsgcInsensitive.
+    property CaseMode: TsgcFSearchGrepCase read FCaseMode write FCaseMode;
     // statistics of the last search
     property ElapsedMs: Int64 read FElapsedMs;
     property CandidateCount: Integer read FCandidateCount;
@@ -316,6 +320,7 @@ begin
   FMaxLinesPerFile := 5;
   FThreadCount := 4;
   FMaxBytes := 64 * 1024 * 1024;
+  FCaseMode := fsgcInsensitive;
 end;
 
 procedure TsgcFSearchGrep.Cancel;
@@ -541,7 +546,14 @@ begin
       vJob.MaxLines := Max(1, FMaxLinesPerFile);
       vJob.MaxBytes := FMaxBytes;
       vJob.Indexer := FIndexer;
-      vJob.CaseSensitive := IsCaseSensitive(Pattern, Mode);
+      case FCaseMode of
+        fsgcSmart:
+          vJob.CaseSensitive := IsCaseSensitive(Pattern, Mode);
+        fsgcSensitive:
+          vJob.CaseSensitive := True;
+      else
+        vJob.CaseSensitive := False;
+      end;
       vJob.RegexOptions := [roNotEmpty, roMultiLine];
       if not vJob.CaseSensitive then
         Include(vJob.RegexOptions, roIgnoreCase);

@@ -12,6 +12,12 @@
 Versions
 --------
 
+1.0.3: 2026 November
+
+ [/] Content search (grep:, regex:, sym:) now ignores case by default. Before, a capital letter in the search text made it case sensitive.
+ [+] case:yes and case:no filters choose the case of one content search. The pipe API grep request has the same option in its "case" field.
+ [+] content_case setting in config.json: insensitive (default), smart (the previous behaviour) or sensitive. The setting is kept across updates.
+
 1.0.2: 2026 November
 
  [*] Search bar: the results list no longer flickers or jumps back to the start when the index changes. A refresh with unchanged rows leaves the list alone, and a refresh with changed rows keeps the scroll position and the selected row.

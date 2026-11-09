@@ -60,7 +60,7 @@ uses
   sgcFSearch_Grep;
 
 const
-  SGCFS_ENGINE_VERSION = '1.0.2';
+  SGCFS_ENGINE_VERSION = '1.0.3';
   SGCFS_CHECKPOINT_INTERVAL_MS = 5 * 60 * 1000;
   SGCFS_CHANGED_THROTTLE_MS = 100;
 
@@ -1044,6 +1044,11 @@ vName:
   vGrep := TsgcFSearchGrep.Create;
   try
     vGrep.Indexer := FIndexer;
+    // case: filter or pipe "case" field first, then the setting
+    if vQ.HasCase then
+      vGrep.CaseMode := vQ.CaseMode
+    else
+      vGrep.CaseMode := FConfig.ContentCase;
     vGrep.Search(FContent, Pattern, Mode, vLimit, vFilter, vHits);
   finally
     vGrep.Free;
@@ -1266,6 +1271,7 @@ var
   vRows: TsgcFSearchEngineRows;
   vStatus: TsgcFSearchEngineStatus;
   vRoots: TJSONArray;
+  vQuery: TsgcFSearchQuery;
   vKind: string;
   i: Integer;
 begin
@@ -1299,9 +1305,21 @@ begin
           Exit(DoErrorJSON(vId, 'unknown grep mode: ' + vField.Value));
         vField := vO.GetValue('q');
         if vField <> nil then
-          Grep(vO.GetValue('grep').Value, vMode, vField.Value, vLimit, vRows)
+          vQuery := sgcFSearchParseQuery(vField.Value)
         else
-          Grep(vO.GetValue('grep').Value, vMode, '', vLimit, vRows);
+          vQuery := sgcFSearchParseQuery('');
+        // the "case" field beats a case: filter in "q"
+        vField := vO.GetValue('case');
+        if vField is TJSONBool then
+        begin
+          vQuery.HasCase := True;
+          if TJSONBool(vField).AsBoolean then
+            vQuery.CaseMode := fsgcSensitive
+          else
+            vQuery.CaseMode := fsgcInsensitive;
+        end;
+        DoContentSearch(vQuery, vO.GetValue('grep').Value, vMode, vLimit,
+          True, vRows);
         Result := DoRowsToJSON(vRows, vR);
       end
       else if vO.GetValue('q') <> nil then

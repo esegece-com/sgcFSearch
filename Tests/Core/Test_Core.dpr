@@ -603,6 +603,85 @@ begin
   Check(FileExists(sgcFSearchLogFileName), 'log file written');
 end;
 
+procedure TestConfigContentCase;
+const
+  CS_OLD = '{"roots":["~"],"skip":[],"hotkey":"Ctrl+Alt+F","drives":[],' +
+    '"content_max_size_mb":32}';
+  CS_TEXT: array [0 .. 2] of string = ('insensitive', 'smart', 'sensitive');
+  CS_MODE: array [0 .. 2] of TsgcFSearchGrepCase = (fsgcInsensitive, fsgcSmart,
+    fsgcSensitive);
+var
+  vCfg, vDlg: TsgcFSearchConfig;
+  vFile, vLog: string;
+  i: Integer;
+
+  function LoadedCase: TsgcFSearchGrepCase;
+  var
+    vC: TsgcFSearchConfig;
+  begin
+    vC := TsgcFSearchConfig.Create;
+    try
+      Check(vC.LoadFromFile(vFile), 'content_case file loads');
+      Result := vC.ContentCase;
+    finally
+      vC.Free;
+    end;
+  end;
+
+begin
+  vFile := sgcFSearchConfigFileName + '.case';
+  vCfg := TsgcFSearchConfig.Create;
+  try
+    Check(vCfg.ContentCase = fsgcInsensitive, 'content_case default');
+    // a saved value round-trips
+    for i := 0 to High(CS_MODE) do
+    begin
+      vCfg.ContentCase := CS_MODE[i];
+      vCfg.SaveToFile(vFile);
+      Check(LoadedCase = CS_MODE[i], 'content_case round trip ' + CS_TEXT[i]);
+    end;
+    vCfg.SetDefaults;
+    Check(vCfg.ContentCase = fsgcInsensitive, 'content_case SetDefaults');
+    // config.json written by an older version, no content_case key
+    TFile.WriteAllText(vFile, CS_OLD, TEncoding.ANSI);
+    Check(LoadedCase = fsgcInsensitive, 'content_case older config');
+    vCfg.ContentCase := fsgcSensitive;
+    Check(vCfg.LoadFromFile(vFile) and (vCfg.ContentCase = fsgcInsensitive) and
+      (vCfg.Hotkey = 'Ctrl+Alt+F') and (vCfg.ContentMaxSizeMB = 32),
+      'content_case older config, reused instance');
+    // load then save, as the Folders dialog does, keeps the value
+    for i := 0 to High(CS_MODE) do
+    begin
+      TFile.WriteAllText(vFile, '{"roots":["~"],"content_case":"' + CS_TEXT[i] +
+        '"}', TEncoding.ANSI);
+      vDlg := TsgcFSearchConfig.Create;
+      try
+        Check(vDlg.LoadFromFile(vFile), 'content_case dialog load');
+        vDlg.Roots := ['~', 'D:\Work'];
+        vDlg.SaveToFile(vFile);
+      finally
+        vDlg.Free;
+      end;
+      Check((LoadedCase = CS_MODE[i]) and
+        (Pos('"content_case"', TFile.ReadAllText(vFile, TEncoding.UTF8)) > 0),
+        'content_case load then save ' + CS_TEXT[i]);
+    end;
+    // value matching ignores case
+    TFile.WriteAllText(vFile, '{"content_case":"SENSITIVE"}', TEncoding.ANSI);
+    Check(LoadedCase = fsgcSensitive, 'content_case value ignores case');
+    TFile.WriteAllText(vFile, '{"content_case":"Smart"}', TEncoding.ANSI);
+    Check(LoadedCase = fsgcSmart, 'content_case value ignores case 2');
+    // an unknown value means insensitive and is logged once
+    TFile.WriteAllText(vFile, '{"content_case":"bogus_zz"}', TEncoding.ANSI);
+    Check(LoadedCase = fsgcInsensitive, 'content_case unknown value');
+    vLog := TFile.ReadAllText(sgcFSearchLogFileName, TEncoding.UTF8);
+    Check(Length(vLog.Split(['bogus_zz'])) = 2,
+      'content_case unknown value logged once');
+  finally
+    vCfg.Free;
+  end;
+end;
+
 procedure TestScale;
 const
   CS_DIRS = 1000;
@@ -703,6 +782,7 @@ begin
     TestTypes;
     TestCrawlAndIndex;
     TestConfig;
+    TestConfigContentCase;
     TestScale;
   except
     on E: Exception do

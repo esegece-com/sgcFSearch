@@ -39,6 +39,8 @@ unit sgcFSearch_Query;
   suffix -asc / -desc forces the direction (sort:size-asc), a leading -
   reverses the default (sort:-date = oldest first)
   grep:<text> regex:<pattern> sym:<name>  content filters, parsed only.
+  case:yes|no            content search only, yes = case sensitive, no =
+  ignores case; beats the content_case setting (default insensitive)
   Parsing never raises: invalid values are ignored and listed in Warnings. }
 
 interface
@@ -86,6 +88,8 @@ type
     Grep: string; // grep:
     ContentRegex: string; // regex:
     Sym: string; // sym:
+    HasCase: Boolean; // case: given
+    CaseMode: TsgcFSearchGrepCase; // case:yes sensitive, case:no insensitive
     Warnings: TArray<string>;
     /// At least one positive (non exclude) term.
     function HasNameTerms: Boolean;
@@ -122,8 +126,8 @@ type
   end;
 
 const
-  CS_KEYS: array [0 .. 12] of string = ('ext', 'type', 'kind', 'in', 'path',
-    'size', 'mtime', 're', 'limit', 'sort', 'grep', 'regex', 'sym');
+  CS_KEYS: array [0 .. 13] of string = ('ext', 'type', 'kind', 'in', 'path',
+    'size', 'mtime', 're', 'limit', 'sort', 'grep', 'regex', 'sym', 'case');
 
   CS_TYPE_DOCUMENTS = 'txt,md,pdf,doc,docx,odt,rtf,xls,xlsx,ods,csv,ppt,pptx,' +
     'odp,epub,tex,pages,numbers,key,xps';
@@ -695,7 +699,23 @@ begin
   else if Key = 'regex' then
     Q.ContentRegex := Val
   else if Key = 'sym' then
-    Q.Sym := Val;
+    Q.Sym := Val
+  else if Key = 'case' then
+  begin
+    c := LowerCase(Trim(Val));
+    if c = 'yes' then
+    begin
+      Q.HasCase := True;
+      Q.CaseMode := fsgcSensitive;
+    end
+    else if c = 'no' then
+    begin
+      Q.HasCase := True;
+      Q.CaseMode := fsgcInsensitive;
+    end
+    else
+      DoWarn(Q, 'invalid case: ' + Val);
+  end;
 end;
 
 function sgcFSearchParseQuery(const Text: string; const Now: TDateTime)
