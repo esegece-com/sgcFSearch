@@ -12,6 +12,14 @@
 Versions
 --------
 
+1.0.4: 2026 November
+
+ [+] Search bar: drag its empty area to move it. The position is remembered per monitor layout, and a double click on the empty area centers it again.
+ [+] Search bar: a pin button keeps the bar open when it loses focus and lets other windows go over it.
+ [+] Saved chip: save the current search under a name and apply it again from the chip menu.
+ [+] Portable mode: a file named sgcFSearch.portable next to the exe keeps all the data in data\<computer name> next to it.
+ [*] A failed save of the index at the end of the first crawl no longer stops the engine.
+
 1.0.3: 2026 November
 
  [/] Content search (grep:, regex:, sym:) now ignores case by default. Before, a capital letter in the search text made it case sensitive.

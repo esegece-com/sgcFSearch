@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>sgcFSearch Help</title>
-<meta name="description" content="sgcFSearch 1.0.3 user guide: whole-disk file search for Windows, search bar, query syntax, content search, command line and pipe API.">
+<meta name="description" content="sgcFSearch 1.0.4 user guide: whole-disk file search for Windows, search bar, query syntax, content search, command line and pipe API.">
 <style>
 :root {
   --bg: #ffffff;
@@ -243,7 +243,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <aside class="sidebar" aria-label="Table of contents">
   <div class="brand">
     <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="8" fill="#0b5cb5"/><circle cx="15" cy="15" r="7" fill="none" stroke="#fff" stroke-width="2.6"/><line x1="20" y1="20" x2="26" y2="26" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
-    <div><b>sgcFSearch</b><span>User Guide, version 1.0.3</span></div>
+    <div><b>sgcFSearch</b><span>User Guide, version 1.0.4</span></div>
   </div>
   <details class="toc" id="toc" open>
     <summary>Contents</summary>
@@ -251,11 +251,11 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
       <li><a href="#intro">1. Introduction</a>
         <ol><li><a href="#intro-features">Main features</a></li><li><a href="#intro-req">System requirements</a></li><li><a href="#intro-parts">The parts</a></li></ol></li>
       <li><a href="#install">2. Installation</a>
-        <ol><li><a href="#install-downloads">Downloads</a></li><li><a href="#install-setup">Install with the setup</a></li><li><a href="#install-unzip">Manual installation from the zip</a></li><li><a href="#install-cli">Command line and start at login</a></li><li><a href="#install-uninstall">Uninstall</a></li></ol></li>
+        <ol><li><a href="#install-downloads">Downloads</a></li><li><a href="#install-setup">Install with the setup</a></li><li><a href="#install-unzip">Manual installation from the zip</a></li><li><a href="#install-cli">Command line and start at login</a></li><li><a href="#install-uninstall">Uninstall</a></li><li><a href="#install-portable">Portable mode</a></li></ol></li>
       <li><a href="#start">3. Getting started</a>
         <ol><li><a href="#start-first">First run</a></li><li><a href="#start-states">Index states</a></li><li><a href="#start-hotkey">The hotkey</a></li><li><a href="#start-search">A first search</a></li></ol></li>
       <li><a href="#bar">4. The search bar</a>
-        <ol><li><a href="#bar-layout">Layout</a></li><li><a href="#bar-rows">Result rows</a></li><li><a href="#bar-keys">Keyboard and mouse</a></li><li><a href="#bar-chips">Filter chips</a></li><li><a href="#bar-history">History</a></li><li><a href="#bar-folder">Folder picker</a></li></ol></li>
+        <ol><li><a href="#bar-layout">Layout</a></li><li><a href="#bar-rows">Result rows</a></li><li><a href="#bar-keys">Keyboard and mouse</a></li><li><a href="#bar-chips">Filter chips</a></li><li><a href="#bar-history">History</a></li><li><a href="#bar-move">Moving and pinning</a></li><li><a href="#bar-folder">Folder picker</a></li></ol></li>
       <li><a href="#query">5. Query syntax</a>
         <ol><li><a href="#q-words">Words and modifiers</a></li><li><a href="#q-typo">Typo tolerance</a></li><li><a href="#q-path">Path tokens</a></li><li><a href="#q-filters">Filter reference</a></li><li><a href="#q-size">Size values</a></li><li><a href="#q-mtime">Date values</a></li><li><a href="#q-sort">Sort values</a></li><li><a href="#q-types">Type categories</a></li><li><a href="#q-examples">Worked examples</a></li></ol></li>
       <li><a href="#content">6. Content search</a>
@@ -286,7 +286,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
   <h1>sgcFSearch</h1>
   <p class="subtitle">User Guide</p>
   <div class="rule" aria-hidden="true"></div>
-  <p class="meta">Version 1.0.3<br>2026-11-09<br>eSeGeCe, <a href="https://www.esegece.com">https://www.esegece.com</a><br>Copyright &copy; 2026 eSeGeCe</p>
+  <p class="meta">Version 1.0.4<br>2026-11-10<br>eSeGeCe, <a href="https://www.esegece.com">https://www.esegece.com</a><br>Copyright &copy; 2026 eSeGeCe</p>
 </header>
 
 <nav class="print-toc" aria-label="Contents">
@@ -295,11 +295,11 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
     <li><a href="#intro"><span class="num">1</span>Introduction</a>
       <ol><li><a href="#intro-features">Main features</a></li><li><a href="#intro-req">System requirements</a></li><li><a href="#intro-parts">The parts</a></li></ol></li>
     <li><a href="#install"><span class="num">2</span>Installation</a>
-      <ol><li><a href="#install-downloads">Downloads</a></li><li><a href="#install-setup">Install with the setup</a></li><li><a href="#install-unzip">Manual installation from the zip</a></li><li><a href="#install-cli">Command line and start at login</a></li><li><a href="#install-uninstall">Uninstall</a></li></ol></li>
+      <ol><li><a href="#install-downloads">Downloads</a></li><li><a href="#install-setup">Install with the setup</a></li><li><a href="#install-unzip">Manual installation from the zip</a></li><li><a href="#install-cli">Command line and start at login</a></li><li><a href="#install-uninstall">Uninstall</a></li><li><a href="#install-portable">Portable mode</a></li></ol></li>
     <li><a href="#start"><span class="num">3</span>Getting started</a>
       <ol><li><a href="#start-first">First run</a></li><li><a href="#start-states">Index states</a></li><li><a href="#start-hotkey">The hotkey</a></li><li><a href="#start-search">A first search</a></li></ol></li>
     <li><a href="#bar"><span class="num">4</span>The search bar</a>
-      <ol><li><a href="#bar-layout">Layout</a></li><li><a href="#bar-rows">Result rows</a></li><li><a href="#bar-keys">Keyboard and mouse</a></li><li><a href="#bar-chips">Filter chips</a></li><li><a href="#bar-history">History</a></li><li><a href="#bar-folder">Folder picker</a></li></ol></li>
+      <ol><li><a href="#bar-layout">Layout</a></li><li><a href="#bar-rows">Result rows</a></li><li><a href="#bar-keys">Keyboard and mouse</a></li><li><a href="#bar-chips">Filter chips</a></li><li><a href="#bar-history">History</a></li><li><a href="#bar-move">Moving and pinning</a></li><li><a href="#bar-folder">Folder picker</a></li></ol></li>
     <li><a href="#query"><span class="num">5</span>Query syntax</a>
       <ol><li><a href="#q-words">Words and modifiers</a></li><li><a href="#q-typo">Typo tolerance</a></li><li><a href="#q-path">Path tokens</a></li><li><a href="#q-filters">Filter reference</a></li><li><a href="#q-size">Size values</a></li><li><a href="#q-mtime">Date values</a></li><li><a href="#q-sort">Sort values</a></li><li><a href="#q-types">Type categories</a></li><li><a href="#q-examples">Worked examples</a></li></ol></li>
     <li><a href="#content"><span class="num">6</span>Content search</a>
@@ -427,6 +427,16 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 </ol>
 <p>In both cases the data folder <code>%LOCALAPPDATA%\sgcFSearch</code> (index, settings, history, usage, log) is kept. Optionally delete it by hand to remove every trace.</p>
 <div class="note"><b>Note.</b> Do not use both ways side by side. A copy from the zip and a copy from the setup would share the same data folder and the same login entry, and the PATH could point to either one. Uninstall the one you do not want before you use the other.</div>
+
+<h3 id="install-portable">Portable mode</h3>
+<p>Portable mode is for the zip, not for the installed version. Create an empty file named <code>sgcFSearch.portable</code> next to <code>sgcFSearch.exe</code> and that copy becomes portable. The file alone turns it on, its content does not matter and there is no command line switch.</p>
+<div class="tbl"><table>
+<tr><th>Item</th><th>In portable mode</th></tr>
+<tr><td>Data folder</td><td><code>data\&lt;computer name&gt;</code> inside the program folder. Each computer has its own folder, so one copy on a USB stick used on several PCs never mixes indexes.</td></tr>
+<tr><td>Outside the folder</td><td>Nothing is written outside the program folder. The tray item <b>Start at login</b> is disabled, and <code>sgcfs install</code> and <code>sgcfs uninstall</code> print a message and exit with code 2.</td></tr>
+<tr><td>Installed copy</td><td>A portable copy runs independently of an installed one on the same PC. It has its own pipe, and its <code>sgcfs</code> talks only to it. If the installed copy holds the hotkey, the portable copy uses a fallback hotkey.</td></tr>
+</table></div>
+<div class="note"><b>Note.</b> The program folder must be writable. On read-only media nothing can be saved, and a computer with no index there yet gets one scan that can be searched, then the tray shows Stopped and later changes are not followed.</div>
 </section>
 
 <!-- ============================================================ 3 -->
@@ -496,6 +506,8 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
   <text class="sv-t" x="319" y="83" font-size="13">In folder...</text>
   <rect class="sv-chip" x="410" y="64" width="52" height="28" rx="14"/>
   <text class="sv-t" x="423" y="83" font-size="13">Sort</text>
+  <rect class="sv-chip" x="470" y="64" width="62" height="28" rx="14"/>
+  <text class="sv-t" x="483" y="83" font-size="13">Saved</text>
   <!-- row 1 selected -->
   <rect class="sv-sel" x="10" y="100" width="740" height="46"/>
   <rect class="sv-accbar" x="10" y="110" width="3" height="26"/>
@@ -529,14 +541,14 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <div class="tbl"><table>
 <tr><th>#</th><th>Part</th><th>Description</th></tr>
 <tr><td>1</td><td>Search box</td><td>Type the query here. The placeholder reads "Search files and folders". Results update as you type.</td></tr>
-<tr><td>2</td><td>Filter chips</td><td>Type, Modified, Size, In folder... and Sort. A chip turns blue and shows its value when its filter is in the query. See <a href="#bar-chips">Filter chips</a>.</td></tr>
+<tr><td>2</td><td>Filter chips</td><td>Type, Modified, Size, In folder..., Sort and Saved. A chip turns blue and shows its value when its filter is in the query. See <a href="#bar-chips">Filter chips</a>.</td></tr>
 <tr><td>3</td><td>Result list</td><td>Up to 9 rows are visible, scroll for more. The bar loads up to 300 results per query. The selected row has a tinted background and an accent bar on the left.</td></tr>
 <tr><td>4</td><td>Name and match</td><td>The file icon, then the name. The matched part of the name is drawn in the accent color.</td></tr>
 <tr><td>5</td><td>Folder</td><td>The parent folder of the result, shortened in the middle when it is too long.</td></tr>
 <tr><td>6</td><td>Size and date</td><td>File size and last modified date and time, right aligned.</td></tr>
 <tr><td>7</td><td>Status line</td><td>Result count and search time, warnings, errors and the index state. See below.</td></tr>
 </table></div>
-<p>The bar opens centered on the monitor that holds the mouse pointer, in the upper part of the screen, and stays on top of other windows. It grows with the number of results and hides itself when it loses the focus (for example when you click another window). It follows the Windows light or dark app mode.</p>
+<p>The bar opens centered on the monitor that holds the mouse pointer, in the upper part of the screen, and stays on top of other windows. It grows with the number of results and hides itself when it loses the focus (for example when you click another window). It follows the Windows light or dark app mode. You can move the bar and pin it open, see <a href="#bar-move">Moving and pinning</a>.</p>
 
 <h3 id="bar-rows">Result rows</h3>
 <p>The bar shows results as two-line rows, not as columns:</p>
@@ -571,6 +583,9 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <tr><td>Double-click a row</td><td>Open the item</td></tr>
 <tr><td>Right-click a row</td><td>Menu with <b>Open</b> (<kbd>Enter</kbd>), <b>Show in folder</b> (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>), <b>Copy file</b> (<kbd>Ctrl</kbd>+<kbd>C</kbd>) and <b>Copy path</b> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>)</td></tr>
 <tr><td>Click a chip</td><td>Open the chip menu. On an active chip, a click on the <b>&#215;</b> at its right end removes the filter.</td></tr>
+<tr><td>Drag the empty area</td><td>Move the bar. See <a href="#bar-move">Moving and pinning</a>.</td></tr>
+<tr><td>Double-click the empty area</td><td>Forget the saved position and center the bar</td></tr>
+<tr><td>Click the pin</td><td>Turn <b>Keep open</b> on or off</td></tr>
 </table></div>
 <p>Open, Show in folder and Copy file feed the <a href="#r-frecency">frecency ranking</a>. Copy path does not.</p>
 
@@ -586,10 +601,24 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <tr><td>Sort</td><td>Relevance, Name, Size, Date</td><td>Relevance removes <code>sort:</code>. The others write <code>sort:name</code>, <code>sort:size</code>, <code>sort:date</code></td></tr>
 </table></div>
 <p>An active chip shows its value: the Type chip lists the categories (for example <i>Images, Code</i>), the In folder chip shows <i>In</i> and the folder name, and the Sort chip shows <i>Sort: Name</i>.</p>
+<p>The <b>Saved</b> chip has no filter of its own and never turns blue. It keeps the searches you repeat, each one a name and a query such as <code>ext:pas in:C:\Projects mtime:week</code>. Its menu lists the saved filters in alphabetical order, then <b>Save current search...</b>, which asks for a name and is disabled while the search box is empty, then a <b>Remove</b> submenu. A name that already exists, ignoring case, is replaced.</p>
+<p>Choosing a saved filter writes it into the search box and runs the search. The words you typed stay. Each filter key in the saved text replaces every filter of that key in the box, and a key the saved text holds more than once, such as <code>in:</code> or <code>path:</code>, keeps all its values. Plain words in the saved text are added if they are not already there, so applying the same filter twice changes nothing. The list is stored in <code>saved_filters.json</code> in the data folder, so it survives updates and follows portable mode.</p>
 
 <h3 id="bar-history">History</h3>
 <p>The bar remembers your last 50 searches in <code>history.json</code> in the data folder. A search is added when the bar closes with text in the box, and when you copy a file or a path. Repeating a search moves it to the top instead of adding a duplicate.</p>
 <p>With an empty search box, press <kbd>Up</kbd> to recall the most recent search, and keep pressing <kbd>Up</kbd> for older ones. <kbd>Down</kbd> goes back toward the newest one and finally to an empty box. As soon as you edit the recalled text, the arrow keys move the selection again.</p>
+
+<h3 id="bar-move">Moving and pinning</h3>
+<p>Drag the bar by its empty area, that is the outer margins, the space between the chips and the status text, to move it. The position is remembered for each monitor layout, so docking and undocking a laptop gives each layout its own place. A position that is no longer on screen is ignored. When the results would take the bar past the bottom of the work area, it is shifted up for display and the remembered position does not change. Double-click the empty area to forget the position for the current monitor layout and center the bar again.</p>
+<p>The pin button at the right end of the search box is the <b>Keep open</b> toggle. When it is on:</p>
+<ul>
+  <li>the bar does not hide when it loses the focus, and it no longer stays on top of other windows,</li>
+  <li>opening a result, showing it in its folder and copying leave the bar open,</li>
+  <li><kbd>Esc</kbd> still hides the bar,</li>
+  <li>the hotkey and the tray icon bring the bar to the front with the focus in the search box, or hide it when it is already the active window,</li>
+  <li>the results keep refreshing while the bar is in the background.</li>
+</ul>
+<p>The pin state and the positions are saved in <code>bar.json</code> in the data folder and are kept across restarts and updates.</p>
 
 <h3 id="bar-folder">Folder picker</h3>
 <p>Two ways lead to the standard Windows folder dialog:</p>
@@ -874,7 +903,7 @@ System Volume Information  .next  .nuxt  .angular  .parcel-cache  .dart_tool
 <h2><span class="num">9</span>Configuration reference</h2>
 
 <h3 id="cfg-files">Data folder and files</h3>
-<p>All data lives in <code>%LOCALAPPDATA%\sgcFSearch</code> (for example <code>C:\Users\you\AppData\Local\sgcFSearch</code>), unless <code>SGCFSEARCH_HOME</code> points elsewhere. The folder is created when needed.</p>
+<p>All data lives in <code>%LOCALAPPDATA%\sgcFSearch</code> (for example <code>C:\Users\you\AppData\Local\sgcFSearch</code>), unless <code>SGCFSEARCH_HOME</code> points elsewhere. In <a href="#install-portable">portable mode</a> it is <code>data\&lt;computer name&gt;</code> inside the program folder. The folder is created when needed.</p>
 <div class="tbl"><table>
 <tr><th>File</th><th>Content</th></tr>
 <tr><td><code>config.json</code></td><td>Settings. Defaults are used when it is missing.</td></tr>
@@ -882,6 +911,8 @@ System Volume Information  .next  .nuxt  .angular  .parcel-cache  .dart_tool
 <tr><td><code>content.idx</code></td><td>The trigram content index of the content folders. Saved with <code>names.idx</code>.</td></tr>
 <tr><td><code>usage.json</code></td><td>Open and copy history for the frecency ranking (up to 4,000 paths)</td></tr>
 <tr><td><code>history.json</code></td><td>The last 50 searches of the search bar</td></tr>
+<tr><td><code>saved_filters.json</code></td><td>The saved filters of the Saved chip, the name and the query of each one</td></tr>
+<tr><td><code>bar.json</code></td><td>Search bar pin state and one position per monitor layout</td></tr>
 <tr><td><code>daemon.log</code></td><td>The log. At 2 MB it is renamed to <code>daemon.log.old</code> and a new one starts.</td></tr>
 </table></div>
 
@@ -967,7 +998,7 @@ sgcfs stop</code></pre>
 sgcfs 'package.json !node_modules\ | ForEach-Object { Split-Path $_ }</code></pre>
 <p><code>sgcfs status</code> prints one value per line (example values):</p>
 <pre><code>state            ready
-version          1.0.3
+version          1.0.4
 pid              12345
 files            3,404,349
 folders          447,577
@@ -993,7 +1024,7 @@ log              C:\Users\you\AppData\Local\sgcFSearch\daemon.log</code></pre>
 <h3 id="pipe-conn">Connection and security</h3>
 <div class="tbl"><table>
 <tr><th>Item</th><th>Value</th></tr>
-<tr><td>Pipe name</td><td><code>\\.\pipe\sgcFSearch-&lt;SID&gt;</code>, where <code>&lt;SID&gt;</code> is the security identifier of the current user, for example <code>S-1-5-21-...-1001</code>. <code>SGCFSEARCH_PIPE</code> overrides it.</td></tr>
+<tr><td>Pipe name</td><td><code>\\.\pipe\sgcFSearch-&lt;SID&gt;</code>, where <code>&lt;SID&gt;</code> is the security identifier of the current user, for example <code>S-1-5-21-...-1001</code>. In <a href="#install-portable">portable mode</a> the name also ends with a short hash of the program folder. <code>SGCFSEARCH_PIPE</code> overrides it.</td></tr>
 <tr><td>Access</td><td>The pipe has a protected access list that grants access to the current user only. Remote clients are rejected, so only programs of the same user on the same PC can connect.</td></tr>
 <tr><td>Framing</td><td>Byte mode, UTF-8. One JSON object per line, ended by <code>\n</code> (<code>\r\n</code> is accepted). A line may be up to 16 MB.</td></tr>
 <tr><td>Sessions</td><td>A connection may send many requests. Each request gets exactly one response line, in order.</td></tr>
@@ -1030,7 +1061,7 @@ log              C:\Users\you\AppData\Local\sgcFSearch\daemon.log</code></pre>
 <h4>Status</h4>
 <pre><code>{"id":3,"status":true}</code></pre>
 <pre><code>{"id":3,"ok":true,"state":"ready","files":5080000,"folders":610000,"crawled":123456,
- "content_pending":42,"content_indexed":36000,"pid":1234,"version":"1.0.3",
+ "content_pending":42,"content_indexed":36000,"pid":1234,"version":"1.0.4",
  "roots":["C:\\","D:\\"],"log":"C:\\Users\\you\\AppData\\Local\\sgcFSearch\\daemon.log"}</code></pre>
 <p><code>state</code> is one of <code>starting</code>, <code>loading</code>, <code>crawling</code>, <code>catchup</code>, <code>ready</code>, <code>stopping</code>, <code>stopped</code> (see <a href="#start-states">Index states</a>). <code>roots</code> lists the indexed drives.</p>
 
@@ -1229,6 +1260,14 @@ app: hotkey Win+Shift+F active</code></pre>
 <!-- ============================================================ 15 -->
 <section class="chapter" id="history">
 <h2><span class="num">15</span>Version history</h2>
+<h3 id="v104">1.0.4, November 2026</h3>
+<ul>
+  <li>Search bar: drag its empty area to move it. The position is remembered per monitor layout, and a double click on the empty area centers it again.</li>
+  <li>Search bar: a pin button keeps the bar open when it loses focus and lets other windows go over it.</li>
+  <li>Saved chip: save the current search under a name and apply it again from the chip menu.</li>
+  <li>Portable mode: a file named <code>sgcFSearch.portable</code> next to the exe keeps all the data in <code>data\&lt;computer name&gt;</code> next to it.</li>
+  <li>A failed save of the index at the end of the first crawl no longer stops the engine.</li>
+</ul>
 <h3 id="v103">1.0.3, November 2026</h3>
 <ul>
   <li>Content search (<code>grep:</code>, <code>regex:</code>, <code>sym:</code>) now ignores case by default. Before, a capital letter in the search text made it case sensitive.</li>
@@ -1258,7 +1297,7 @@ app: hotkey Win+Shift+F active</code></pre>
   <li>Single instance: a second start shows the search bar of the running instance.</li>
   <li>Distributed as a signed per user installer (recommended) and as a zip. The setup offers the PATH entry and Start at login as tasks; with the zip, <code>sgcfs install</code> adds them.</li>
 </ul>
-<p class="footer">sgcFSearch 1.0.3. Copyright &copy; 2026 eSeGeCe. <a href="https://www.esegece.com">https://www.esegece.com</a></p>
+<p class="footer">sgcFSearch 1.0.4. Copyright &copy; 2026 eSeGeCe. <a href="https://www.esegece.com">https://www.esegece.com</a></p>
 </section>
 
 </main>

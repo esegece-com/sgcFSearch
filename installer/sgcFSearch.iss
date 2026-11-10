@@ -5,7 +5,7 @@
 ; then: "C:\Program Files\Inno Setup 7\ISCC.exe" installer\sgcFSearch.iss
 
 #define AppName "sgcFSearch"
-#define AppVersion "1.0.3"
+#define AppVersion "1.0.4"
 #define AppPublisher "eSeGeCe"
 #define AppURL "https://www.esegece.com"
 #define AppExe "sgcFSearch.exe"

@@ -20,6 +20,7 @@ uses
   System.JSON, System.DateUtils, System.Math, System.Diagnostics,
   System.Generics.Collections, System.Win.Registry,
   // sgc
+  sgcFSearch_Config in '..\Source\sgcFSearch_Config.pas',
   sgcFSearch_Pipe in '..\Source\sgcFSearch_Pipe.pas';
 
 const
@@ -721,11 +722,22 @@ begin
   end;
 end;
 
+// True (message printed) when this copy is portable: it writes nothing
+// outside its own folder
+function PortableRefused(const Cmd: string): Boolean;
+begin
+  Result := sgcFSearchIsPortable;
+  if Result then
+    ErrLn('sgcfs: ' + Cmd + ' is not available in portable mode');
+end;
+
 function CmdInstall: Integer;
 var
   vDir, vApp: string;
   vLogin: Boolean;
 begin
+  if PortableRefused('install') then
+    Exit(2);
   vLogin := (ParamCount >= 2) and SameText(ParamStr(2), '--login');
   vDir := ExcludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
   if UpdateUserPath(vDir, True) then
@@ -756,6 +768,8 @@ function CmdUninstall: Integer;
 var
   vDir: string;
 begin
+  if PortableRefused('uninstall') then
+    Exit(2);
   Result := 0;
   if sgcFSearchSetStartAtLogin(False, '') then
     OutLn('login entry removed')

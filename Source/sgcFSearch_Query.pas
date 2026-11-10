@@ -114,6 +114,11 @@ function sgcFSearchQueryGetFilter(const Text, Key: string): string;
 /// appends it; quotes the value when needed. Value '' removes the filter.
 function sgcFSearchQuerySetFilter(const Text, Key, Value: string): string;
 function sgcFSearchQueryRemoveFilter(const Text, Key: string): string;
+/// Applies the text of a saved filter to Text. Each filter key in Saved
+/// replaces every filter of that key in Text, all the values are kept when
+/// Saved repeats a key. Plain words of Saved are added if not there yet, the
+/// words of Text stay. Applying the same Saved twice changes nothing.
+function sgcFSearchQueryApplySaved(const Text, Saved: string): string;
 
 implementation
 
@@ -838,6 +843,98 @@ end;
 function sgcFSearchQueryRemoveFilter(const Text, Key: string): string;
 begin
   Result := sgcFSearchQuerySetFilter(Text, Key, '');
+end;
+
+function DoCloseQuote(const Text: string): string;
+var
+  i, vCount: Integer;
+begin
+  vCount := 0;
+  for i := 1 to Length(Text) do
+    if Text[i] = '"' then
+      Inc(vCount);
+  Result := Text;
+  if Odd(vCount) then
+    Result := Result + '"';
+end;
+
+function DoHasPlainWord(const Text, Term: string): Boolean;
+var
+  vTokens: TArray<TsgcFSearchQueryToken>;
+  vTerm: string;
+  i: Integer;
+begin
+  Result := False;
+  vTerm := sgcFSearchFold(Term);
+  vTokens := DoTokenize(Text);
+  for i := 0 to High(vTokens) do
+    if (not DoIsKey(DoTokenKey(vTokens[i]))) and
+      (sgcFSearchFold(vTokens[i].Value) = vTerm) then
+      Exit(True);
+end;
+
+procedure DoAppendPart(var Text: string; const Part: string);
+begin
+  Text := TrimRight(Text);
+  if Text <> '' then
+    Text := Text + ' ';
+  Text := Text + Part;
+end;
+
+function sgcFSearchQueryApplySaved(const Text, Saved: string): string;
+var
+  vSaved, vKey, vValue: string;
+  vTokens: TArray<TsgcFSearchQueryToken>;
+  vCounts: TArray<Integer>; // usable values of the key of each token
+  i, j: Integer;
+
+  function ValueOf(const T: TsgcFSearchQueryToken): string;
+  begin
+    Result := Copy(T.Value, T.Colon + 1, MaxInt);
+  end;
+
+begin
+  Result := Text;
+  vSaved := DoCloseQuote(Saved);
+  vTokens := DoTokenize(vSaved);
+  if vTokens = nil then
+    Exit;
+  // an open quote would swallow what is added after it
+  Result := DoCloseQuote(Text);
+  SetLength(vCounts, Length(vTokens));
+  for i := 0 to High(vTokens) do
+  begin
+    vKey := DoTokenKey(vTokens[i]);
+    if DoIsKey(vKey) then
+      for j := 0 to High(vTokens) do
+        if (DoTokenKey(vTokens[j]) = vKey) and (ValueOf(vTokens[j]) <> '') then
+          Inc(vCounts[i]);
+  end;
+  // A key with one value is replaced in place, as a chip does, and new keys
+  // and words go in the order of the saved text. A repeated key is taken out
+  // here and written back last, so a second run gives the same text.
+  for i := 0 to High(vTokens) do
+  begin
+    vKey := DoTokenKey(vTokens[i]);
+    if DoIsKey(vKey) and (vCounts[i] <> 1) then
+      Result := sgcFSearchQueryRemoveFilter(Result, vKey);
+  end;
+  for i := 0 to High(vTokens) do
+  begin
+    vKey := DoTokenKey(vTokens[i]);
+    vValue := ValueOf(vTokens[i]);
+    if DoIsKey(vKey) then
+    begin
+      if (vCounts[i] = 1) and (vValue <> '') then
+        Result := sgcFSearchQuerySetFilter(Result, vKey, vValue);
+    end
+    else if (vTokens[i].Value <> '') and
+      not DoHasPlainWord(Result, vTokens[i].Value) then
+      DoAppendPart(Result, Copy(vSaved, vTokens[i].Start, vTokens[i].Len));
+  end;
+  for i := 0 to High(vTokens) do
+    if (vCounts[i] > 1) and (ValueOf(vTokens[i]) <> '') then
+      DoAppendPart(Result, Copy(vSaved, vTokens[i].Start, vTokens[i].Len));
 end;
 
 end.

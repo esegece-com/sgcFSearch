@@ -16,6 +16,7 @@ uses
   Winapi.Windows, System.SysUtils, System.Classes, System.JSON,
   System.SyncObjs, System.Diagnostics, System.IOUtils,
   // sgc
+  sgcFSearch_Config in '..\..\Source\sgcFSearch_Config.pas',
   sgcFSearch_Log in '..\..\Source\sgcFSearch_Log.pas',
   sgcFSearch_Pipe in '..\..\Source\sgcFSearch_Pipe.pas';
 
@@ -305,6 +306,40 @@ begin
   Check(sgcFSearchPipeName = '\\.\pipe\abc', 'bare override');
   SetEnvironmentVariable(SGCFS_PIPE_ENV, PChar(GPipeEnv));
   Check(sgcFSearchPipeName = '\\.\pipe\' + GPipeEnv, 'test pipe name');
+end;
+
+procedure TestPortablePipeName;
+var
+  vDir, vOther, vPlain, vBase, vName: string;
+begin
+  vDir := TPath.Combine(GBase, 'portable_a');
+  vOther := TPath.Combine(GBase, 'portable_b');
+  vPlain := TPath.Combine(GBase, 'portable_none');
+  ForceDirectories(vDir);
+  ForceDirectories(vOther);
+  ForceDirectories(vPlain);
+  TFileStream.Create(vDir + '\' + SGCFS_PORTABLE_MARKER, fmCreate).Free;
+  TFileStream.Create(vOther + '\' + SGCFS_PORTABLE_MARKER, fmCreate).Free;
+  vBase := '\\.\pipe\sgcFSearch-' + sgcFSearchCurrentUserSid;
+  SetEnvironmentVariable(SGCFS_PIPE_ENV, nil);
+  try
+    Check(sgcFSearchPipeNameFor(vPlain) = vBase, 'no marker keeps the name');
+    vName := sgcFSearchPipeNameFor(vDir);
+    Check((Copy(vName, 1, Length(vBase) + 1) = vBase + '-') and
+      (Length(vName) = Length(vBase) + 9), 'portable pipe name ' + vName);
+    Check(sgcFSearchPipeNameFor(vDir) = vName, 'portable name is stable');
+    Check(sgcFSearchPipeNameFor(vDir + '\') = vName,
+      'portable name, trailing backslash');
+    Check(sgcFSearchPipeNameFor(UpperCase(vDir)) = vName,
+      'portable name ignores case');
+    Check(sgcFSearchPipeNameFor(vOther) <> vName,
+      'another folder has another name');
+    SetEnvironmentVariable(SGCFS_PIPE_ENV, 'abc');
+    Check(sgcFSearchPipeNameFor(vDir) = '\\.\pipe\abc',
+      'SGCFSEARCH_PIPE wins over the marker');
+  finally
+    SetEnvironmentVariable(SGCFS_PIPE_ENV, PChar(GPipeEnv));
+  end;
 end;
 
 procedure TestNoServer;
@@ -641,6 +676,7 @@ begin
       TFile.Copy(vSrcCli, GCli, True);
     try
       TestPure;
+      TestPortablePipeName;
       TestNoServer;
       TestServer;
     finally

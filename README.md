@@ -80,6 +80,18 @@ Examples: `report ext:pdf mtime:month`, `^setup ext:exe in:~\Downloads`, `invoic
 | `Ctrl+Shift+C` | copy the full path |
 | `Esc` | hide the search bar |
 
+## Saved filters
+
+The **Saved** chip, after the other filter chips, keeps the searches you repeat, each one a name and a query such as `ext:pas in:C:\Projects mtime:week`. **Save current search...** asks for a name, and a name that already exists, ignoring case, is replaced. The **Remove** submenu deletes one.
+
+Choosing a saved filter writes it into the search box and runs the search. The words you typed stay. Each filter key in the saved text replaces every filter of that key in the box, and a key the saved text holds more than once keeps all its values. Plain words in the saved text are added if they are not already there, so applying the same filter twice changes nothing.
+
+## Moving and pinning the bar
+
+Drag the bar by its empty area (the margins, the space between the chips, the status text) to move it. The position is remembered for each monitor layout, so docking and undocking a laptop gives each layout its own place. Double click the empty area to forget the position for the current layout and center the bar again.
+
+The pin button at the right end of the search box is the **Keep open** toggle. With the pin on, the bar does not hide when it loses the focus and it no longer stays on top of other windows. Opening a result, showing it in its folder and copying leave it open. `Esc` still hides it. The hotkey and the tray icon bring it to the front with the focus in the search box, or hide it when it is already the active window. The pin state is remembered across restarts and updates.
+
 ## Command line
 
 `sgcfs` talks to the running app. A search starts `sgcFSearch.exe --background` from the same folder when it is not running yet.
@@ -105,7 +117,7 @@ Results go to stdout, one path per line (folders end with `\`, content hits as `
 
 ## Pipe API
 
-The app listens on `\\.\pipe\sgcFSearch-<user SID>` (the environment variable `SGCFSEARCH_PIPE` overrides the name). Only the current user can connect, remote clients are rejected. Each request is one UTF-8 JSON object per line and gets exactly one response line; a connection can send many requests. Every request may carry an `"id"`, which the response echoes.
+The app listens on `\\.\pipe\sgcFSearch-<user SID>` (the environment variable `SGCFSEARCH_PIPE` overrides the name, and in [portable mode](#portable-mode) the name also ends with a short hash of the program folder). Only the current user can connect, remote clients are rejected. Each request is one UTF-8 JSON object per line and gets exactly one response line; a connection can send many requests. Every request may carry an `"id"`, which the response echoes.
 
 | Request | Response |
 |---|---|
@@ -149,7 +161,18 @@ All files are in the data folder, `%LOCALAPPDATA%\sgcFSearch` by default.
 | `content.idx` | content index of the content folders |
 | `usage.json` | open and copy counts for the ranking |
 | `history.json` | search bar history |
+| `saved_filters.json` | saved filters of the **Saved** chip, name and query of each one |
+| `bar.json` | search bar pin state and one position per monitor layout |
 | `daemon.log` | log file, rotated at 2 MB |
+
+## Portable mode
+
+For the zip, not the installed version. Create an empty file named `sgcFSearch.portable` next to `sgcFSearch.exe` and that copy becomes portable. There is no command line switch, the file alone turns it on.
+
+- All data files go to `data\<computer name>` inside the program folder. Each computer has its own folder, so one copy on a USB stick used on several PCs never mixes indexes.
+- Nothing is written outside the program folder, so the tray entry Start at login is disabled, and `sgcfs install` and `sgcfs uninstall` print a message and exit with code 2.
+- A portable copy runs independently of an installed one on the same PC. It has its own pipe, and its `sgcfs` talks only to it.
+- The folder must be writable. On read-only media nothing can be saved, and a computer with no index there yet gets one scan that can be searched, then the tray shows Stopped and later changes are not followed.
 
 ## Building
 

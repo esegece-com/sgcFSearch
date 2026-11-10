@@ -771,6 +771,121 @@ begin
   end;
 end;
 
+procedure TestSavedFilters;
+var
+  vFile: string;
+  vList, vBack: TArray<TsgcFSearchSavedFilter>;
+  vBytes: TBytes;
+  i: Integer;
+  vSame: Boolean;
+begin
+  vFile := sgcFSearchSavedFiltersFileName;
+  Check(SameText(ExtractFileName(vFile), SGCFS_SAVED_FILTERS_FILE) and
+    SameText(ExcludeTrailingPathDelimiter(ExtractFilePath(vFile)),
+    sgcFSearchDataDir), 'saved filters in the data folder');
+  if FileExists(vFile) then
+    TFile.Delete(vFile);
+  Check(Length(sgcFSearchLoadSavedFilters(vFile)) = 0, 'saved filters missing');
+  SetLength(vList, 4);
+  vList[0].Name := 'Recent Pascal';
+  vList[0].Query := 'ext:pas in:C:\Projects mtime:week';
+  vList[1].Name := 'caf' + #$00E9 + ' ' + #$4E2D + #$6587 + ' & "x"';
+  vList[1].Query := 'in:"C:\My Projects" path:a\b grep:"say \"hi\"" ' + #$00F1;
+  vList[2].Name := 'Back\slash';
+  vList[2].Query := 'C:\Temp\ "quoted word" in:"D:\x y\"';
+  vList[3].Name := 'Plain';
+  vList[3].Query := 'word';
+  sgcFSearchSaveSavedFilters(vFile, vList);
+  vBack := sgcFSearchLoadSavedFilters(vFile);
+  vSame := Length(vBack) = Length(vList);
+  if vSame then
+    for i := 0 to High(vList) do
+      vSame := vSame and (vBack[i].Name = vList[i].Name) and
+        (vBack[i].Query = vList[i].Query);
+  Check(vSame, 'saved filters round trip');
+  Check(not FileExists(vFile + '.tmp'), 'saved filters no temp left');
+  vBytes := TFile.ReadAllBytes(vFile);
+  Check((Length(vBytes) > 0) and (vBytes[0] = Ord('[')),
+    'saved filters no BOM, array');
+  // replacing an existing file
+  sgcFSearchSaveSavedFilters(vFile, Copy(vList, 0, 1));
+  vBack := sgcFSearchLoadSavedFilters(vFile);
+  Check((Length(vBack) = 1) and (vBack[0].Name = 'Recent Pascal'),
+    'saved filters replace file');
+  sgcFSearchSaveSavedFilters(vFile, nil);
+  Check((Length(sgcFSearchLoadSavedFilters(vFile)) = 0) and FileExists(vFile),
+    'saved filters empty list');
+  // invalid content is an empty list
+  TFile.WriteAllText(vFile, '[{"name":"x"', TEncoding.ASCII);
+  Check(Length(sgcFSearchLoadSavedFilters(vFile)) = 0,
+    'saved filters corrupt JSON');
+  TFile.WriteAllText(vFile, '{"name":"x","query":"y"}', TEncoding.ASCII);
+  Check(Length(sgcFSearchLoadSavedFilters(vFile)) = 0,
+    'saved filters not an array');
+  vBytes := TBytes.Create($FF, $FE, $00, $01, $C0, $80);
+  TFile.WriteAllBytes(vFile, vBytes);
+  Check(Length(sgcFSearchLoadSavedFilters(vFile)) = 0,
+    'saved filters binary garbage');
+  TFile.WriteAllBytes(vFile, nil);
+  Check(Length(sgcFSearchLoadSavedFilters(vFile)) = 0,
+    'saved filters empty file');
+  TFile.WriteAllText(vFile, '[1,{"name":"x"},{"name":1,"query":"y"},' +
+    '{"name":"Good","query":"ext:pas"}]', TEncoding.ASCII);
+  vBack := sgcFSearchLoadSavedFilters(vFile);
+  Check((Length(vBack) = 1) and (vBack[0].Name = 'Good'),
+    'saved filters bad entries skipped');
+  TFile.Delete(vFile);
+end;
+
+procedure TestPortable;
+var
+  vDir, vPlain, vMarker, vExpected: string;
+begin
+  vDir := GBase + '\portable';
+  vPlain := GBase + '\portable_none';
+  vMarker := vDir + '\' + SGCFS_PORTABLE_MARKER;
+  ForceDirectories(vDir);
+  ForceDirectories(vPlain);
+  vExpected := vDir + '\data\' + sgcFSearchSafeFolderName
+    (GetEnvironmentVariable('COMPUTERNAME'));
+  Check(sgcFSearchPortableDataDir(vDir) = '', 'portable: no marker');
+  Check(not sgcFSearchIsPortable, 'portable: the test exe is not portable');
+  ForceDirectories(vMarker);
+  Check(sgcFSearchPortableDataDir(vDir) = '',
+    'portable: a folder with the marker name is not a marker');
+  RemoveDir(vMarker);
+  TFileStream.Create(vMarker, fmCreate).Free;
+  Check(sgcFSearchPortableDataDir(vDir) = vExpected, 'portable: empty marker');
+  Check(sgcFSearchPortableDataDir(vDir + '\') = vExpected,
+    'portable: exe folder with a trailing backslash');
+  Check(not DirectoryExists(vDir + '\data'),
+    'portable: the check creates nothing');
+  TFile.WriteAllText(vMarker, 'any content');
+  Check(sgcFSearchPortableDataDir(vDir) = vExpected,
+    'portable: marker with content');
+  // order: SGCFSEARCH_HOME, marker, %LOCALAPPDATA%
+  Check(SameText(sgcFSearchDataDirFor(vDir), ExcludeTrailingPathDelimiter(GHome)
+    ), 'portable: SGCFSEARCH_HOME wins over the marker');
+  SetEnvironmentVariable(SGCFS_HOME_ENV, nil);
+  try
+    Check(sgcFSearchDataDirFor(vDir) = vExpected,
+      'portable: the marker wins over LOCALAPPDATA');
+    Check(SameText(sgcFSearchDataDirFor(vPlain),
+      IncludeTrailingPathDelimiter(GetEnvironmentVariable('LOCALAPPDATA')) +
+      'sgcFSearch'), 'portable: no marker keeps LOCALAPPDATA');
+  finally
+    SetEnvironmentVariable(SGCFS_HOME_ENV, PChar(GHome));
+  end;
+  Check(sgcFSearchSafeFolderName('A:B*C') = 'A_B_C',
+    'safe name: invalid chars');
+  Check(sgcFSearchSafeFolderName('PC. ') = 'PC',
+    'safe name: trailing dot, space');
+  Check(sgcFSearchSafeFolderName('con') = '_con', 'safe name: reserved device');
+  Check(sgcFSearchSafeFolderName('COM1') = '_COM1', 'safe name: reserved port');
+  Check(sgcFSearchSafeFolderName('COMPUTER') = 'COMPUTER', 'safe name: plain');
+  Check(sgcFSearchSafeFolderName('') = 'unknown', 'safe name: empty');
+end;
+
 begin
   try
     GBase := IncludeTrailingPathDelimiter(TPath.GetTempPath) +
@@ -782,6 +897,8 @@ begin
     TestTypes;
     TestCrawlAndIndex;
     TestConfig;
+    TestSavedFilters;
+    TestPortable;
     TestConfigContentCase;
     TestScale;
   except

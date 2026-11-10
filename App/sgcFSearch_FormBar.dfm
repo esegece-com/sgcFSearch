@@ -37,6 +37,20 @@ object sgcFSearchBarForm: TsgcFSearchBarForm
     OnMouseUp = pbStatusMouseUp
     OnPaint = pbStatusPaint
   end
+  object pbPin: TPaintBox
+    Left = 713
+    Top = 19
+    Width = 28
+    Height = 28
+    Cursor = crHandPoint
+    Hint = 'Keep open'
+    ParentShowHint = False
+    ShowHint = True
+    OnMouseEnter = pbPinMouseEnter
+    OnMouseLeave = pbPinMouseLeave
+    OnMouseUp = pbPinMouseUp
+    OnPaint = pbPinPaint
+  end
   object edtSearch: TEdit
     Left = 52
     Top = 20

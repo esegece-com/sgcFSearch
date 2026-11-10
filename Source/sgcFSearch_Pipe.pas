@@ -12,7 +12,9 @@ unit sgcFSearch_Pipe;
 {$I sgcVer.inc}
 // Named pipe transport of the sgcFSearch protocol (one JSON object per line).
 // - Name: \\.\pipe\sgcFSearch-<current user SID>. The env SGCFSEARCH_PIPE
-// overrides the full name (a bare name gets the \\.\pipe\ prefix).
+// overrides the full name (a bare name gets the \\.\pipe\ prefix). In portable
+// mode the name also ends with -<hash of the exe folder>, so a portable copy
+// and its sgcfs talk only to each other, never to an installed copy.
 // - Server: multi-instance pipe, overlapped ConnectNamedPipe in an accept
 // thread, one worker thread per connection, DACL D:P(A;;GA;;;<SID>), local
 // clients only. The first instance is created with
@@ -113,8 +115,12 @@ type
 
   // string SID of the process user ('' on failure)
 function sgcFSearchCurrentUserSid: string;
-// \\.\pipe\sgcFSearch-<SID>, or the SGCFSEARCH_PIPE override
+// pipe name of the running exe, see sgcFSearchPipeNameFor
 function sgcFSearchPipeName: string;
+// pipe name for an exe folder: the SGCFSEARCH_PIPE override, else
+// \\.\pipe\sgcFSearch-<SID>, plus -<hash of ExeDir> when ExeDir holds the
+// portable marker file
+function sgcFSearchPipeNameFor(const ExeDir: string): string;
 // connect + one request + close; False when the server cannot be reached
 function sgcFSearchPipeRequest(const Line: string; TimeoutMs: Integer;
   out Response: string): Boolean;
@@ -144,9 +150,9 @@ function sgcFSearchGetStartAtLogin: string;
 implementation
 
 uses
-  System.Math, System.JSON, System.Win.Registry,
+  System.Math, System.JSON, System.Win.Registry, System.Hash,
   // sgc
-  sgcFSearch_Log;
+  sgcFSearch_Config, sgcFSearch_Log;
 
 const
   CS_PIPE_BUFFER = 64 * 1024;
@@ -802,14 +808,37 @@ begin
   end;
 end;
 
-function sgcFSearchPipeName: string;
+// the case and the 8.3 spelling of the folder do not change the hash
+function DoExeDirHash(const ExeDir: string): string;
+var
+  vDir, vLong: string;
+  vLen: DWORD;
+begin
+  vDir := IncludeTrailingPathDelimiter(ExeDir);
+  SetLength(vLong, 32768);
+  vLen := GetLongPathName(PChar(vDir), PChar(vLong), Length(vLong));
+  if (vLen > 0) and (vLen < DWORD(Length(vLong))) then
+    vDir := Copy(vLong, 1, vLen);
+  Result := THashFNV1a32.GetHashString(AnsiUpperCase(vDir));
+end;
+
+function sgcFSearchPipeNameFor(const ExeDir: string): string;
 begin
   Result := Trim(GetEnvironmentVariable(SGCFS_PIPE_ENV));
   if Result = '' then
+  begin
     Result := SGCFS_PIPE_PREFIX + SGCFS_PIPE_BASE_NAME +
-      sgcFSearchCurrentUserSid
+      sgcFSearchCurrentUserSid;
+    if sgcFSearchPortableDataDir(ExeDir) <> '' then
+      Result := Result + '-' + DoExeDirHash(ExeDir);
+  end
   else if Copy(Result, 1, 2) <> '\\' then
     Result := SGCFS_PIPE_PREFIX + Result;
+end;
+
+function sgcFSearchPipeName: string;
+begin
+  Result := sgcFSearchPipeNameFor(sgcFSearchExeDir);
 end;
 
 function sgcFSearchPipeRequest(const Line: string; TimeoutMs: Integer;

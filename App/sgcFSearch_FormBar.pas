@@ -20,7 +20,9 @@ unit sgcFSearch_FormBar;
   - Results: virtual owner-drawn TListBox (lbVirtualOwnerDraw, LBS_NODATA:
   the control stores no strings, rows are painted from the result array).
   - NotifyIndexChanged (main thread) re-runs the visible query, throttled to
-  one run per 250 ms, ignored while hidden. No timer runs while hidden. }
+  one run per 250 ms, ignored while hidden. No timer runs while hidden.
+  - Dragging the empty area moves the bar, a double click there centers it
+  again. bar.json keeps one position per monitor layout and the pin state. }
 
 interface
 
@@ -28,6 +30,7 @@ uses
   Winapi.Windows, Winapi.Messages, Winapi.ShellAPI, Winapi.CommCtrl,
   System.SysUtils, System.Classes, System.Types, System.Math,
   System.SyncObjs, System.JSON, System.IOUtils, System.Generics.Collections,
+  System.Generics.Defaults,
   System.Win.Registry, System.Win.ComObj,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.StdCtrls, Vcl.ExtCtrls,
   Vcl.Menus, Vcl.Dialogs, Vcl.Clipbrd,
@@ -39,7 +42,8 @@ const
   WM_SGCFS_BAR_DEACTIVATE = WM_APP + 101;
 
 type
-  TsgcFSearchBarChip = (fsbcType, fsbcModified, fsbcSize, fsbcFolder, fsbcSort);
+  TsgcFSearchBarChip = (fsbcType, fsbcModified, fsbcSize, fsbcFolder, fsbcSort,
+    fsbcSaved);
 
   TsgcFSearchBarPalette = record
     Back: TColor;
@@ -85,6 +89,7 @@ type
     FChipKind: TsgcFSearchBarChip;
     FChipValues: TArray<string>;
     FChipMenu: TPopupMenu;
+    FSaved: TArray<TsgcFSearchSavedFilter>;
     FRowMenu: TPopupMenu;
     FIcons: TDictionary<string, Integer>;
     FImlSmall: HIMAGELIST;
@@ -95,18 +100,42 @@ type
     FHistoryFileName: string;
     FLinkRect: TRect;
     FLinkHot: Boolean;
+    FPinned: Boolean;
+    FPinHot: Boolean;
+    FMoving: Boolean;
+    FAtSaved: Boolean;
+    FSavedPos: TPoint;
+    FMoveStart: TPoint;
+    FLostFocusTick: UInt64;
+    FPositions: TDictionary<string, TPoint>;
+    FStateFileName: string;
     procedure SetEngine(const Value: TsgcFSearchEngine);
     procedure SetHistoryFileName(const Value: string);
     procedure WMActivate(var Message: TWMActivate); message WM_ACTIVATE;
     procedure WMBarDeactivate(var Message: TMessage);
       message WM_SGCFS_BAR_DEACTIVATE;
     procedure CMDialogKey(var Message: TCMDialogKey); message CM_DIALOGKEY;
+    procedure WMNCHitTest(var Message: TWMNCHitTest); message WM_NCHITTEST;
+    procedure WMNCLButtonDblClk(var Message: TWMNCLButtonDblClk);
+      message WM_NCLBUTTONDBLCLK;
+    procedure WMEnterSizeMove(var Message: TMessage); message WM_ENTERSIZEMOVE;
+    procedure WMExitSizeMove(var Message: TMessage); message WM_EXITSIZEMOVE;
     procedure DoDeliver(Seq: Int64; const Rows: TsgcFSearchEngineRows;
       const Error, Warning: string; Fallback: Boolean);
     procedure DoStartSearch(Keep: Boolean);
     procedure DoClearRows;
     procedure DoLayout;
     procedure DoPlace(aMonitor: Vcl.Forms.TMonitor);
+    procedure DoPlaceAtCursor;
+    function DoSavedMonitor(aDefault: TMonitorDefaultTo): Vcl.Forms.TMonitor;
+    function DoIsDragPoint(const P: TPoint): Boolean;
+    procedure DoFitSaved(aClientHeight: Integer);
+    procedure DoResetPosition;
+    procedure DoSetPinned(Value: Boolean);
+    procedure DoApplyPin(aFlags: UINT);
+    procedure DoAfterAction;
+    procedure DoLoadBarState;
+    procedure DoSaveBarState;
     procedure DoApplyTheme(Handles: Boolean);
     procedure DoApplyListTheme;
     procedure DoForceForeground;
@@ -121,6 +150,10 @@ type
     procedure DoRowMenuClick(Sender: TObject);
     procedure DoChipItemClick(Sender: TObject);
     procedure DoChipPopup(Kind: TsgcFSearchBarChip);
+    procedure DoBuildSavedMenu;
+    procedure DoSavedItemClick(Sender: TObject);
+    procedure DoSavedSaveClick(Sender: TObject);
+    procedure DoSavedRemoveClick(Sender: TObject);
     function DoChipValue(Kind: TsgcFSearchBarChip): string;
     function DoHistoryActive: Boolean;
     procedure DoHistoryStep(Dir: Integer);
@@ -135,6 +168,8 @@ type
     procedure CreateWnd; override;
     /// Folder picker (TFileOpenDialog, fdoPickFolders); '' = cancelled.
     function DoPickFolder(const Initial: string): string; virtual;
+    /// Asks the name of a saved filter; False = cancelled.
+    function DoInputSavedName(var Name: string): Boolean; virtual;
     /// Writes Value into the query text for a chip ('' removes the filter).
     procedure DoApplyChip(Kind: TsgcFSearchBarChip; const Value: string);
     function DoChipCaption(Kind: TsgcFSearchBarChip;
@@ -151,12 +186,17 @@ type
     procedure HideBar;
     /// Main thread only (TThread.Queue from Engine.OnChanged).
     procedure NotifyIndexChanged;
+    /// Pin on, bar on screen and active. A click on the tray icon has already
+    /// taken the activation away, so an activation lost a moment ago counts.
+    function PinnedAndActive: Boolean;
+    property Pinned: Boolean read FPinned;
     property Engine: TsgcFSearchEngine read FEngine write SetEngine;
     property HistoryFileName: string read FHistoryFileName
       write SetHistoryFileName;
   published
     edtSearch: TEdit;
     pbChips: TPaintBox;
+    pbPin: TPaintBox;
     lstResults: TListBox;
     pbStatus: TPaintBox;
     tmrRefresh: TTimer;
@@ -170,6 +210,11 @@ type
     procedure edtSearchKeyPress(Sender: TObject; var Key: Char);
     procedure pbChipsPaint(Sender: TObject);
     procedure pbChipsMouseUp(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure pbPinPaint(Sender: TObject);
+    procedure pbPinMouseEnter(Sender: TObject);
+    procedure pbPinMouseLeave(Sender: TObject);
+    procedure pbPinMouseUp(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure pbStatusPaint(Sender: TObject);
     procedure pbStatusMouseLeave(Sender: TObject);
@@ -201,6 +246,11 @@ const
   CS_ROW_HEIGHT = 46;
   CS_BAR_LIMIT = 300;
   CS_HISTORY_MAX = 50;
+  CS_STATE_FILE = 'bar.json';
+  CS_BAR_HEADER = 100;
+  CS_POS_LIMIT = 100000;
+  CS_PIN_SIZE = 28;
+  CS_TRAY_CLICK_MS = 500;
   CS_ICON_CACHE_MAX = 4000;
   CS_FONT = 'Segoe UI';
   CS_LINK_CAPTION = 'made by esegece.com';
@@ -214,10 +264,11 @@ const
   CS_DWMWCP_ROUND = 2;
   CS_THEME_KEY = 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize';
 
+  // the Saved chip has no filter key of its own
   CS_CHIP_KEYS: array [TsgcFSearchBarChip] of string = ('type', 'mtime', 'size',
-    'in', 'sort');
+    'in', 'sort', '');
   CS_CHIP_NAMES: array [TsgcFSearchBarChip] of string = ('Type', 'Modified',
-    'Size', 'In folder...', 'Sort');
+    'Size', 'In folder...', 'Sort', 'Saved');
 
   CS_PAL_LIGHT: TsgcFSearchBarPalette = (Back: $00F9F9F9; Box: $00FFFFFF;
     Border: $00D0D0D0; Text: $001A1A1A; Dim: $00606060; Accent: $00B85F00;
@@ -276,6 +327,29 @@ function sgcSHOpenFolderAndSelectItems(pidlFolder: Pointer; cidl: UINT;
 
 var
   GInv: TFormatSettings;
+
+  // One key per monitor layout: the bounds of every monitor, in a stable order.
+function sgcBarLayoutKey: string;
+var
+  vList: TStringList;
+  vR: TRect;
+  i: Integer;
+begin
+  vList := TStringList.Create;
+  try
+    for i := 0 to Screen.MonitorCount - 1 do
+    begin
+      vR := Screen.Monitors[i].BoundsRect;
+      vList.Add(Format('%d,%d,%d,%d', [vR.Left, vR.Top, vR.Right, vR.Bottom]));
+    end;
+    vList.Sort;
+    vList.Delimiter := ';';
+    vList.StrictDelimiter := True;
+    Result := vList.DelimitedText;
+  finally
+    vList.Free;
+  end;
+end;
 
 function sgcBarSystemDark: Boolean;
 var
@@ -510,7 +584,9 @@ end;
 procedure TsgcFSearchBarForm.CreateParams(var Params: TCreateParams);
 begin
   inherited;
-  Params.ExStyle := Params.ExStyle or WS_EX_TOOLWINDOW or WS_EX_TOPMOST;
+  Params.ExStyle := Params.ExStyle or WS_EX_TOOLWINDOW;
+  if not FPinned then
+    Params.ExStyle := Params.ExStyle or WS_EX_TOPMOST;
   Params.WindowClass.style := Params.WindowClass.style or CS_DROPSHADOW;
 end;
 
@@ -550,6 +626,10 @@ begin
   FIcons := TDictionary<string, Integer>.Create;
   FHistoryFileName := IncludeTrailingPathDelimiter(sgcFSearchDataDir) +
     'history.json';
+  FPositions := TDictionary<string, TPoint>.Create;
+  FStateFileName := IncludeTrailingPathDelimiter(sgcFSearchDataDir) +
+    CS_STATE_FILE;
+  DoLoadBarState;
   FChipMenu := TPopupMenu.Create(Self);
   FRowMenu := TPopupMenu.Create(Self);
   AddRowItem('Open', 1, Vcl.Menus.ShortCut(VK_RETURN, []));
@@ -569,6 +649,7 @@ begin
   FreeAndNil(FWorker);
   FreeAndNil(FIcons);
   FreeAndNil(FHistory);
+  FreeAndNil(FPositions);
 end;
 
 procedure TsgcFSearchBarForm.SetEngine(const Value: TsgcFSearchEngine);
@@ -598,14 +679,17 @@ begin
   inherited;
   if (Message.Active = WA_INACTIVE) and FShown and not FDialogOpen and
     not FMenuOpen and HandleAllocated then
+  begin
+    FLostFocusTick := GetTickCount64;
     PostMessage(Handle, WM_SGCFS_BAR_DEACTIVATE, 0, 0);
+  end;
 end;
 
 procedure TsgcFSearchBarForm.WMBarDeactivate(var Message: TMessage);
 var
   vFg: hwnd;
 begin
-  if (not FShown) or FDialogOpen or FMenuOpen then
+  if (not FShown) or FPinned or FDialogOpen or FMenuOpen then
     Exit;
   vFg := GetForegroundWindow;
   if (vFg = Handle) or ((vFg <> 0) and (GetWindow(vFg, GW_OWNER) = Handle)) then
@@ -629,6 +713,69 @@ begin
   else
     inherited;
   end;
+end;
+
+procedure TsgcFSearchBarForm.WMNCHitTest(var Message: TWMNCHitTest);
+begin
+  inherited;
+  if (Message.Result = HTCLIENT) and
+    DoIsDragPoint(ScreenToClient(Point(Message.XPos, Message.YPos))) then
+    Message.Result := HTCAPTION;
+end;
+
+procedure TsgcFSearchBarForm.WMNCLButtonDblClk(var Message: TWMNCLButtonDblClk);
+begin
+  if Message.HitTest = HTCAPTION then
+  begin
+    DoResetPosition;
+    Message.Result := 0;
+  end
+  else
+    inherited;
+end;
+
+procedure TsgcFSearchBarForm.WMEnterSizeMove(var Message: TMessage);
+begin
+  inherited;
+  FMoving := True;
+  FMoveStart := BoundsRect.TopLeft;
+end;
+
+procedure TsgcFSearchBarForm.WMExitSizeMove(var Message: TMessage);
+begin
+  inherited;
+  FMoving := False;
+  // a plain click on the empty area runs the move loop too, only a real drag
+  // saves, so a bar shifted up for display keeps its saved place
+  if (Left = FMoveStart.X) and (Top = FMoveStart.Y) then
+    Exit;
+  FSavedPos := BoundsRect.TopLeft;
+  FAtSaved := True;
+  FPositions.AddOrSetValue(sgcBarLayoutKey, FSavedPos);
+  DoSaveBarState;
+  DoFitSaved(ClientHeight);
+end;
+
+// Only the form sees points over the paint boxes, they have no window handle.
+function TsgcFSearchBarForm.DoIsDragPoint(const P: TPoint): Boolean;
+var
+  k: TsgcFSearchBarChip;
+  vInner: TPoint;
+begin
+  Result := False;
+  if PtInRect(FBoxRect, P) then
+    Exit;
+  if PtInRect(pbChips.BoundsRect, P) then
+  begin
+    vInner := Point(P.X - pbChips.Left, P.Y - pbChips.Top);
+    for k := Low(TsgcFSearchBarChip) to High(TsgcFSearchBarChip) do
+      if PtInRect(FChipRects[k], vInner) then
+        Exit;
+  end
+  else if PtInRect(pbStatus.BoundsRect, P) and
+    PtInRect(FLinkRect, Point(P.X - pbStatus.Left, P.Y - pbStatus.Top)) then
+    Exit;
+  Result := True;
 end;
 
 procedure TsgcFSearchBarForm.DoApplyTheme(Handles: Boolean);
@@ -673,15 +820,19 @@ end;
 
 procedure TsgcFSearchBarForm.DoLayout;
 var
-  vM, vW, vY, vBoxH, vEH, vIH, vRows: Integer;
+  vM, vW, vY, vBoxH, vEH, vIH, vRows, vPin: Integer;
 begin
   vW := ClientWidth;
   vM := ScaleValue(10);
   vBoxH := ScaleValue(46);
   FBoxRect := System.Types.Rect(vM, vM, vW - vM, vM + vBoxH);
   vEH := edtSearch.Height;
+  vPin := ScaleValue(CS_PIN_SIZE);
   edtSearch.SetBounds(FBoxRect.Left + ScaleValue(42),
-    FBoxRect.Top + (vBoxH - vEH) div 2, FBoxRect.Width - ScaleValue(54), vEH);
+    FBoxRect.Top + (vBoxH - vEH) div 2, FBoxRect.Width -
+    ScaleValue(54 + CS_PIN_SIZE + 6), vEH);
+  pbPin.SetBounds(FBoxRect.Right - ScaleValue(9) - vPin,
+    FBoxRect.Top + (vBoxH - vPin) div 2, vPin, vPin);
   vY := FBoxRect.Bottom + ScaleValue(8);
   pbChips.SetBounds(vM, vY, vW - 2 * vM, ScaleValue(28));
   vY := pbChips.Top + pbChips.Height + ScaleValue(8);
@@ -703,14 +854,54 @@ begin
     lstResults.Visible := False;
   pbStatus.SetBounds(vM + ScaleValue(6), vY, vW - 2 * vM - ScaleValue(12),
     ScaleValue(20));
-  ClientHeight := pbStatus.Top + pbStatus.Height + ScaleValue(6);
+  vY := pbStatus.Top + pbStatus.Height + ScaleValue(6);
+  if FAtSaved and not FMoving then
+    DoFitSaved(vY)
+  else
+    ClientHeight := vY;
+end;
+
+// A strip the height of the search box and chips: the bar's height follows the
+// results and must not decide which monitor a saved position belongs to.
+function TsgcFSearchBarForm.DoSavedMonitor(aDefault: TMonitorDefaultTo)
+  : Vcl.Forms.TMonitor;
+begin
+  Result := Screen.MonitorFromRect(System.Types.Bounds(FSavedPos.X, FSavedPos.Y,
+    Width, ScaleValue(CS_BAR_HEADER)), aDefault);
+end;
+
+// Sizes the bar at its saved position, kept inside the work area. Only the
+// display moves, the saved position does not change.
+procedure TsgcFSearchBarForm.DoFitSaved(aClientHeight: Integer);
+var
+  vMon: Vcl.Forms.TMonitor;
+  vWA: TRect;
+  vH: Integer;
+begin
+  vH := aClientHeight + Height - ClientHeight;
+  vMon := DoSavedMonitor(mdNearest);
+  if vMon <> nil then
+    vWA := vMon.WorkareaRect
+  else
+    vWA := Screen.WorkareaRect;
+  SetBounds(EnsureRange(FSavedPos.X, vWA.Left, Max(vWA.Left, vWA.Right - Width)
+    ), EnsureRange(FSavedPos.Y, vWA.Top, Max(vWA.Top, vWA.Bottom - vH)),
+    Width, vH);
 end;
 
 procedure TsgcFSearchBarForm.DoPlace(aMonitor: Vcl.Forms.TMonitor);
 var
   vWA: TRect;
   vW: Integer;
+  vSaved: Vcl.Forms.TMonitor;
 begin
+  // a saved position wins while it is still on a monitor
+  vSaved := nil;
+  if FPositions.TryGetValue(sgcBarLayoutKey, FSavedPos) then
+    vSaved := DoSavedMonitor(mdNull);
+  FAtSaved := vSaved <> nil;
+  if FAtSaved then
+    aMonitor := vSaved;
   if aMonitor <> nil then
   begin
     vWA := aMonitor.WorkareaRect;
@@ -721,15 +912,35 @@ begin
   else
     vWA := Screen.WorkareaRect;
   vW := Min(ScaleValue(CS_BAR_WIDTH), vWA.Width - ScaleValue(32));
-  SetBounds(vWA.Left + (vWA.Width - vW) div 2,
-    vWA.Top + Round(vWA.Height * 0.22), vW, Height);
+  if FAtSaved then
+    SetBounds(FSavedPos.X, FSavedPos.Y, vW, Height)
+  else
+    SetBounds(vWA.Left + (vWA.Width - vW) div 2,
+      vWA.Top + Round(vWA.Height * 0.22), vW, Height);
   DoLayout;
+end;
+
+procedure TsgcFSearchBarForm.DoPlaceAtCursor;
+var
+  vPt: TPoint;
+begin
+  if not GetCursorPos(vPt) then
+    vPt := Point(0, 0);
+  DoPlace(Screen.MonitorFromPoint(vPt, mdNearest));
+end;
+
+procedure TsgcFSearchBarForm.DoResetPosition;
+begin
+  FPositions.Remove(sgcBarLayoutKey);
+  DoSaveBarState;
+  DoPlaceAtCursor;
 end;
 
 procedure TsgcFSearchBarForm.DoDpiChanged(Sender: TObject;
 OldDPI, NewDPI: Integer);
 begin
-  if FShown then
+  // while the user drags across monitors the window follows the mouse
+  if FShown and not FMoving then
   begin
     DoPlace(Monitor);
     DoApplyListTheme;
@@ -763,8 +974,10 @@ end;
 
 procedure TsgcFSearchBarForm.ShowBar(const InitialText: string);
 var
-  vPt: TPoint;
+  vOnScreen: Boolean;
 begin
+  // pinned and on screen: it only comes to the front, it stays where it is
+  vOnScreen := FPinned and FShown and Visible;
   DoApplyTheme(True);
   if InitialText <> '' then
   begin
@@ -779,14 +992,12 @@ begin
   FShown := True;
   pbChips.Invalidate;
   DoUpdateEngineText;
-  DoStartSearch(False);
-  if not GetCursorPos(vPt) then
-    vPt := Point(0, 0);
-  DoPlace(Screen.MonitorFromPoint(vPt, mdNearest));
+  DoStartSearch(vOnScreen and (InitialText = ''));
+  if not vOnScreen then
+    DoPlaceAtCursor;
   if not Visible then
     Visible := True;
-  SetWindowPos(Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE or
-    SWP_SHOWWINDOW);
+  DoApplyPin(SWP_SHOWWINDOW);
   DoApplyListTheme;
   DoForceForeground;
   if edtSearch.CanFocus then
@@ -806,6 +1017,46 @@ begin
   FShown := False;
   if Visible then
     Hide;
+end;
+
+function TsgcFSearchBarForm.PinnedAndActive: Boolean;
+begin
+  Result := FPinned and FShown and Visible and
+    ((GetForegroundWindow = Handle) or (GetTickCount64 - FLostFocusTick <
+    CS_TRAY_CLICK_MS));
+end;
+
+procedure TsgcFSearchBarForm.DoApplyPin(aFlags: UINT);
+var
+  vOrder: hwnd;
+begin
+  if not HandleAllocated then
+    Exit;
+  if FPinned then
+    vOrder := HWND_NOTOPMOST
+  else
+    vOrder := HWND_TOPMOST;
+  SetWindowPos(Handle, vOrder, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE or aFlags);
+end;
+
+procedure TsgcFSearchBarForm.DoSetPinned(Value: Boolean);
+begin
+  if FPinned = Value then
+    Exit;
+  FPinned := Value;
+  DoApplyPin(SWP_NOACTIVATE);
+  pbPin.Invalidate;
+  DoSaveBarState;
+end;
+
+// After open, show in folder or the link: a pinned bar stays, the search still
+// goes into the history as it does when the bar closes.
+procedure TsgcFSearchBarForm.DoAfterAction;
+begin
+  if FPinned then
+    DoAddHistory(edtSearch.Text)
+  else
+    HideBar;
 end;
 
 procedure TsgcFSearchBarForm.NotifyIndexChanged;
@@ -1062,7 +1313,7 @@ begin
     ), SW_SHOWNORMAL);
   if FEngine <> nil then
     FEngine.RecordUse(vRow.Path, fsukOpen);
-  HideBar; // saves the history
+  DoAfterAction; // saves the history
 end;
 
 procedure TsgcFSearchBarForm.DoRevealSelected;
@@ -1084,7 +1335,7 @@ begin
       PChar('/select,"' + vRow.Path + '"'), nil, SW_SHOWNORMAL);
   if FEngine <> nil then
     FEngine.RecordUse(vRow.Path, fsukOpen);
-  HideBar;
+  DoAfterAction;
 end;
 
 procedure TsgcFSearchBarForm.DoCopyFile;
@@ -1304,6 +1555,80 @@ begin
   end;
 end;
 
+{ bar state }
+
+procedure TsgcFSearchBarForm.DoLoadBarState;
+var
+  vV, vAll: TJSONValue;
+  vPair: TJSONPair;
+  vEntry: TJSONObject;
+  vPin: Boolean;
+  vX, vY: Integer;
+begin
+  if (FStateFileName = '') or not FileExists(FStateFileName) then
+    Exit;
+  try
+    vV := TJSONObject.ParseJSONValue(TFile.ReadAllText(FStateFileName,
+      TEncoding.UTF8));
+    try
+      if not(vV is TJSONObject) then
+        Exit;
+      FPinned := vV.TryGetValue<Boolean>('pinned', vPin) and vPin;
+      vAll := TJSONObject(vV).GetValue('positions');
+      if vAll is TJSONObject then
+        for vPair in TJSONObject(vAll) do
+          if vPair.JsonValue is TJSONObject then
+          begin
+            vEntry := TJSONObject(vPair.JsonValue);
+            if vEntry.TryGetValue<Integer>('left', vX) and
+              vEntry.TryGetValue<Integer>('top', vY) and
+              (Abs(vX) <= CS_POS_LIMIT) and (Abs(vY) <= CS_POS_LIMIT) then
+              FPositions.AddOrSetValue(vPair.JsonString.Value, Point(vX, vY));
+          end;
+    finally
+      vV.Free;
+    end;
+  except
+    // an unreadable file means defaults
+    FPinned := False;
+    FPositions.Clear;
+  end;
+end;
+
+procedure TsgcFSearchBarForm.DoSaveBarState;
+var
+  vObj, vAll, vEntry: TJSONObject;
+  vPair: TPair<string, TPoint>;
+  vTmp: string;
+begin
+  if FStateFileName = '' then
+    Exit;
+  try
+    vObj := TJSONObject.Create;
+    try
+      vObj.AddPair('pinned', TJSONBool.Create(FPinned));
+      vAll := TJSONObject.Create;
+      vObj.AddPair('positions', vAll);
+      for vPair in FPositions do
+      begin
+        vEntry := TJSONObject.Create;
+        vEntry.AddPair('left', TJSONNumber.Create(vPair.Value.X));
+        vEntry.AddPair('top', TJSONNumber.Create(vPair.Value.Y));
+        vAll.AddPair(vPair.Key, vEntry);
+      end;
+      ForceDirectories(ExtractFileDir(FStateFileName));
+      vTmp := FStateFileName + '.tmp';
+      TFile.WriteAllBytes(vTmp, TEncoding.UTF8.GetBytes(vObj.Format(2)));
+    finally
+      vObj.Free;
+    end;
+    MoveFileEx(PChar(vTmp), PChar(FStateFileName), MOVEFILE_REPLACE_EXISTING or
+      MOVEFILE_WRITE_THROUGH);
+  except
+    // the pin and the place are a convenience, never fail on them
+  end;
+end;
+
 { history }
 
 procedure TsgcFSearchBarForm.DoEnsureHistory;
@@ -1424,6 +1749,9 @@ end;
 
 function TsgcFSearchBarForm.DoChipValue(Kind: TsgcFSearchBarChip): string;
 begin
+  // the empty key would match the plain words of the search
+  if CS_CHIP_KEYS[Kind] = '' then
+    Exit('');
   Result := StringReplace(sgcFSearchQueryGetFilter(edtSearch.Text,
     CS_CHIP_KEYS[Kind]), '"', '', [rfReplaceAll]);
 end;
@@ -1474,6 +1802,8 @@ const Value: string);
 var
   vT: string;
 begin
+  if CS_CHIP_KEYS[Kind] = '' then
+    Exit;
   if Value = '' then
     vT := sgcFSearchQueryRemoveFilter(edtSearch.Text, CS_CHIP_KEYS[Kind])
   else
@@ -1521,23 +1851,28 @@ begin
   FChipKind := Kind;
   FChipMenu.Items.Clear;
   FChipValues := nil;
-  vCur := DoChipValue(Kind);
-  if Kind = fsbcType then
-    vCurList := vCur.Split([','])
-  else
-    vCurList := [vCur];
-  if Kind = fsbcFolder then
-    AddItem('Choose folder...', CS_PICK, False)
+  if Kind = fsbcSaved then
+    DoBuildSavedMenu
   else
   begin
-    sgcBarChipOptions(Kind, vCaps, vVals);
-    for i := 0 to High(vVals) do
-      AddItem(vCaps[i], vVals[i], InList(vVals[i]));
-  end;
-  if vCur <> '' then
-  begin
-    AddItem('-', '', False);
-    AddItem('Remove filter', CS_REMOVE, False);
+    vCur := DoChipValue(Kind);
+    if Kind = fsbcType then
+      vCurList := vCur.Split([','])
+    else
+      vCurList := [vCur];
+    if Kind = fsbcFolder then
+      AddItem('Choose folder...', CS_PICK, False)
+    else
+    begin
+      sgcBarChipOptions(Kind, vCaps, vVals);
+      for i := 0 to High(vVals) do
+        AddItem(vCaps[i], vVals[i], InList(vVals[i]));
+    end;
+    if vCur <> '' then
+    begin
+      AddItem('-', '', False);
+      AddItem('Remove filter', CS_REMOVE, False);
+    end;
   end;
   vPt := pbChips.ClientToScreen(Point(FChipRects[Kind].Left,
     FChipRects[Kind].Bottom + ScaleValue(2)));
@@ -1568,6 +1903,127 @@ begin
     DoApplyChip(FChipKind, '')
   else
     DoApplyChip(FChipKind, vV);
+end;
+
+procedure TsgcFSearchBarForm.DoBuildSavedMenu;
+
+  function AddItem(aParent: TMenuItem; const aCaption: string; aTag: Integer;
+  aClick: TNotifyEvent): TMenuItem;
+  begin
+    Result := TMenuItem.Create(FChipMenu);
+    Result.Caption := aCaption;
+    Result.Tag := aTag;
+    Result.OnClick := aClick;
+    aParent.Add(Result);
+  end;
+
+  function NameCaption(const aName: string): string;
+  begin
+    Result := StringReplace(aName, '&', '&&', [rfReplaceAll]);
+    if Result = cLineCaption then
+      Result := Result + ' '; // a lone '-' would be drawn as a separator
+  end;
+
+var
+  i: Integer;
+  vRemove: TMenuItem;
+begin
+  FSaved := sgcFSearchLoadSavedFilters(sgcFSearchSavedFiltersFileName);
+  TArray.Sort<TsgcFSearchSavedFilter>(FSaved,
+    TComparer<TsgcFSearchSavedFilter>.Construct(
+    function(const A, B: TsgcFSearchSavedFilter): Integer
+    begin
+      Result := AnsiCompareText(A.Name, B.Name);
+    end));
+  for i := 0 to High(FSaved) do
+    AddItem(FChipMenu.Items, NameCaption(FSaved[i].Name), i, DoSavedItemClick);
+  if FSaved <> nil then
+    AddItem(FChipMenu.Items, cLineCaption, 0, nil);
+  AddItem(FChipMenu.Items, 'Save current search...', 0, DoSavedSaveClick)
+    .Enabled := Trim(edtSearch.Text) <> '';
+  if FSaved <> nil then
+  begin
+    vRemove := AddItem(FChipMenu.Items, 'Remove', 0, nil);
+    for i := 0 to High(FSaved) do
+      AddItem(vRemove, NameCaption(FSaved[i].Name), i, DoSavedRemoveClick);
+  end;
+end;
+
+procedure TsgcFSearchBarForm.DoSavedItemClick(Sender: TObject);
+var
+  i: Integer;
+  vT: string;
+begin
+  i := TMenuItem(Sender).Tag;
+  if (i < 0) or (i > High(FSaved)) then
+    Exit;
+  vT := sgcFSearchQueryApplySaved(edtSearch.Text, FSaved[i].Query);
+  if vT <> edtSearch.Text then
+    edtSearch.Text := vT; // OnChange: chips repaint + search
+  edtSearch.SelStart := Length(vT);
+end;
+
+function TsgcFSearchBarForm.DoInputSavedName(var Name: string): Boolean;
+begin
+  Result := InputQuery('Save current search', 'Name:', Name);
+end;
+
+procedure TsgcFSearchBarForm.DoSavedSaveClick(Sender: TObject);
+var
+  vQuery, vName: string;
+  vOk: Boolean;
+  vList: TArray<TsgcFSearchSavedFilter>;
+  vItem: TsgcFSearchSavedFilter;
+  i: Integer;
+begin
+  vQuery := Trim(edtSearch.Text);
+  if vQuery = '' then
+    Exit;
+  vName := vQuery;
+  FDialogOpen := True;
+  try
+    vOk := DoInputSavedName(vName);
+  finally
+    FDialogOpen := False;
+  end;
+  if FShown then
+  begin
+    DoForceForeground;
+    if edtSearch.CanFocus then
+      edtSearch.SetFocus;
+  end;
+  vName := Trim(vName);
+  if (not vOk) or (vName = '') then
+    Exit;
+  vItem.Name := vName;
+  vItem.Query := vQuery;
+  vList := sgcFSearchLoadSavedFilters(sgcFSearchSavedFiltersFileName);
+  i := High(vList);
+  while (i >= 0) and not AnsiSameText(vList[i].Name, vName) do
+    Dec(i);
+  if i >= 0 then
+    vList[i] := vItem
+  else
+    vList := vList + [vItem];
+  sgcFSearchSaveSavedFilters(sgcFSearchSavedFiltersFileName, vList);
+end;
+
+procedure TsgcFSearchBarForm.DoSavedRemoveClick(Sender: TObject);
+var
+  i: Integer;
+  vName: string;
+  vList, vKeep: TArray<TsgcFSearchSavedFilter>;
+begin
+  i := TMenuItem(Sender).Tag;
+  if (i < 0) or (i > High(FSaved)) then
+    Exit;
+  vName := FSaved[i].Name;
+  vList := sgcFSearchLoadSavedFilters(sgcFSearchSavedFiltersFileName);
+  vKeep := nil;
+  for i := 0 to High(vList) do
+    if not AnsiSameText(vList[i].Name, vName) then
+      vKeep := vKeep + [vList[i]];
+  sgcFSearchSaveSavedFilters(sgcFSearchSavedFiltersFileName, vKeep);
 end;
 
 procedure TsgcFSearchBarForm.pbChipsPaint(Sender: TObject);
@@ -1742,7 +2198,83 @@ begin
   if (Button <> mbLeft) or not PtInRect(FLinkRect, Point(X, Y)) then
     Exit;
   ShellExecute(0, 'open', PChar(CS_LINK_URL), nil, nil, SW_SHOWNORMAL);
-  HideBar;
+  DoAfterAction;
+end;
+
+{ pin }
+
+procedure TsgcFSearchBarForm.pbPinPaint(Sender: TObject);
+var
+  C: TCanvas;
+  vR: TRect;
+  vCx, vCy, vCorner: Integer;
+
+  function pt(X, Y: Integer): TPoint;
+  begin
+    Result := Point(vCx + ScaleValue(X), vCy + ScaleValue(Y));
+  end;
+
+begin
+  C := pbPin.Canvas;
+  vR := pbPin.ClientRect;
+  C.Pen.Width := 1;
+  C.Brush.style := bsSolid;
+  C.Brush.Color := FPal.Box;
+  C.FillRect(vR);
+  vCorner := ScaleValue(8);
+  // on is a filled accent button, the same language as an active chip
+  if FPinned or FPinHot then
+  begin
+    if FPinned then
+    begin
+      C.Brush.Color := FPal.ChipActive;
+      C.Pen.Color := FPal.ChipActive;
+    end
+    else
+    begin
+      C.Brush.Color := FPal.Chip;
+      C.Pen.Color := FPal.ChipBorder;
+    end;
+    C.RoundRect(vR.Left, vR.Top, vR.Right, vR.Bottom, vCorner, vCorner);
+  end;
+  vCx := (vR.Left + vR.Right) div 2;
+  vCy := (vR.Top + vR.Bottom) div 2 - ScaleValue(1);
+  C.Pen.Width := Max(1, ScaleValue(1));
+  if FPinned then
+  begin
+    C.Pen.Color := FPal.ChipActiveText;
+    C.Brush.Color := FPal.ChipActiveText;
+  end
+  else
+  begin
+    C.Pen.Color := FPal.Dim;
+    C.Brush.style := bsClear;
+  end;
+  C.Polygon([pt(-4, -7), pt(4, -7), pt(4, -5), pt(2, -5), pt(2, -1), pt(5, 2),
+    pt(-5, 2), pt(-2, -1), pt(-2, -5), pt(-4, -5)]);
+  C.MoveTo(vCx, vCy + ScaleValue(2));
+  C.LineTo(vCx, vCy + ScaleValue(8));
+  C.Pen.Width := 1;
+  C.Brush.style := bsSolid;
+end;
+
+procedure TsgcFSearchBarForm.pbPinMouseEnter(Sender: TObject);
+begin
+  FPinHot := True;
+  pbPin.Invalidate;
+end;
+
+procedure TsgcFSearchBarForm.pbPinMouseLeave(Sender: TObject);
+begin
+  FPinHot := False;
+  pbPin.Invalidate;
+end;
+
+procedure TsgcFSearchBarForm.pbPinMouseUp(Sender: TObject; Button: TMouseButton;
+Shift: TShiftState; X, Y: Integer);
+begin
+  if (Button = mbLeft) and PtInRect(pbPin.ClientRect, Point(X, Y)) then
+    DoSetPinned(not FPinned);
 end;
 
 function TsgcFSearchBarForm.DoImageList(out Size: Integer): HIMAGELIST;

@@ -898,6 +898,35 @@ begin
       Writeln('  log: ', Copy(vLines[i], 1, 160));
 end;
 
+// a folder below a file can never be created, the same as a read-only medium
+procedure TestDataDirNotWritable;
+var
+  vE: TsgcFSearchEngine;
+  vHome: string;
+begin
+  WriteText(GBase + '\blocker', 'x');
+  vHome := GBase + '\blocker\data\PC';
+  vE := TsgcFSearchEngine.Create(vHome);
+  try
+    Check(not DirectoryExists(vHome), 'not writable: no data folder');
+    vE.Config.Roots := [GTree];
+    vE.Config.Drives := [GTree];
+    vE.Start;
+    Check(WaitUntil(function: Boolean
+      begin
+        Result := vE.State in [fsesReady, fsesStopped];
+      end, 30000), 'not writable: the first crawl ends');
+    Check(NameCount(Rows(vE, 'size_small'), 'size_small.bin') = 1,
+      'not writable: the crawled names can be searched');
+    Check(vE.Status.LastError <> '',
+      'not writable: the save error is reported');
+    vE.Stop;
+    Check(vE.State = fsesStopped, 'not writable: stops');
+  finally
+    vE.Free;
+  end;
+end;
+
 var
   E: TsgcFSearchEngine;
   vRec: TRecorder;
@@ -934,6 +963,7 @@ begin
       vRec.Free;
     end;
     TestStopDuringCrawl;
+    TestDataDirNotWritable;
     PrintLog;
   except
     on Ex: Exception do

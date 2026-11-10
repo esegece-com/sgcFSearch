@@ -391,6 +391,8 @@ begin
   FMenuSearch.Default := True;
   DoAddMenuItem('Folders...', DoMenuFolders);
   FMenuLogin := DoAddMenuItem('Start at login', DoMenuLogin);
+  // a portable copy writes nothing outside its own folder
+  FMenuLogin.Enabled := not sgcFSearchIsPortable;
   DoAddMenuItem('Open log', DoMenuLog);
   DoAddMenuItem('-', nil);
   DoAddMenuItem('Quit', DoMenuQuit);
@@ -470,13 +472,18 @@ end;
 
 procedure TsgcFSearchMainForm.DoTrayClick(Sender: TObject);
 begin
-  DoShowBar('');
+  // a pinned bar that has the focus closes, as it does with the hotkey
+  if (not FShutdown) and (FBar <> nil) and FBar.PinnedAndActive then
+    FBar.HideBar
+  else
+    DoShowBar('');
 end;
 
 procedure TsgcFSearchMainForm.DoMenuPopup(Sender: TObject);
 begin
   DoUpdateTray;
-  FMenuLogin.Checked := sgcFSearchGetStartAtLogin <> '';
+  FMenuLogin.Checked := FMenuLogin.Enabled and
+    (sgcFSearchGetStartAtLogin <> '');
 end;
 
 procedure TsgcFSearchMainForm.DoMenuSearch(Sender: TObject);

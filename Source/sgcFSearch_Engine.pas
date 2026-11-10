@@ -60,7 +60,7 @@ uses
   sgcFSearch_Grep;
 
 const
-  SGCFS_ENGINE_VERSION = '1.0.3';
+  SGCFS_ENGINE_VERSION = '1.0.4';
   SGCFS_CHECKPOINT_INTERVAL_MS = 5 * 60 * 1000;
   SGCFS_CHANGED_THROTTLE_MS = 100;
 
@@ -661,7 +661,13 @@ begin
     end;
   end;
   if not FStopping then
-    DoSaveNames;
+    try
+      DoSaveNames;
+    except
+      // the index stays in memory, live updates keep running
+      on E: Exception do
+        DoSetError('index save error: ' + E.Message);
+    end;
 end;
 
 procedure TsgcFSearchEngine.DoSaveNames;

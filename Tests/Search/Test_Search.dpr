@@ -223,6 +223,90 @@ begin
     = 'a size:empty b', 'chip set dedups');
 end;
 
+{ ---- saved filters ------------------------------------------------------ }
+
+procedure TestApplySaved;
+
+  procedure Stable(const Text, Saved: string);
+  var
+    vOnce: string;
+  begin
+    vOnce := sgcFSearchQueryApplySaved(Text, Saved);
+    Check(sgcFSearchQueryApplySaved(vOnce, Saved) = vOnce,
+      'saved stable: [' + Text + '] + [' + Saved + '] = ' + vOnce);
+  end;
+
+var
+  S: string;
+begin
+  // typed words stay
+  Check(sgcFSearchQueryApplySaved('foo bar', 'ext:pas') = 'foo bar ext:pas',
+    'saved keeps typed words');
+  S := sgcFSearchQueryApplySaved('"my file" size:>1k', 'ext:pas');
+  Check(S = '"my file" size:>1k ext:pas', 'saved keeps quoted word: ' + S);
+  // a key is replaced, the other filters stay
+  Check(sgcFSearchQueryApplySaved('ext:txt foo', 'ext:pas') = 'ext:pas foo',
+    'saved replaces a key in place');
+  Check(sgcFSearchQueryApplySaved('a EXT:txt b ext:md', 'ext:pas')
+    = 'a ext:pas b', 'saved replaces every filter of the key');
+  S := sgcFSearchQueryApplySaved('in:C:\a foo mtime:year',
+    'ext:pas mtime:week');
+  Check(S = 'in:C:\a foo mtime:week ext:pas',
+    'saved replaces only its keys: ' + S);
+  // a repeated key is kept whole
+  S := sgcFSearchQueryApplySaved('bar in:C:\old', 'in:C:\a in:D:\b');
+  Check(S = 'bar in:C:\a in:D:\b', 'saved repeated key: ' + S);
+  S := sgcFSearchQueryApplySaved('in:C:\x path:y', 'path:a in:C:\z path:b');
+  Check(S = 'in:C:\z path:a path:b', 'saved repeated and single key: ' + S);
+  S := sgcFSearchQueryApplySaved('x', 'in:"C:\A B" in:"D:\C D"');
+  Check(S = 'x in:"C:\A B" in:"D:\C D"', 'saved repeated quoted key: ' + S);
+  // quoted values survive
+  S := sgcFSearchQueryApplySaved('foo', 'in:"C:\My Projects" ext:pas');
+  Check(S = 'foo in:"C:\My Projects" ext:pas', 'saved quoted value: ' + S);
+  Check(sgcFSearchQueryGetFilter(S, 'in') = 'C:\My Projects',
+    'saved quoted value reads back');
+  S := sgcFSearchQueryApplySaved('in:"D:\Old Stuff" a', 'in:"C:\My Projects"');
+  Check(S = 'in:"C:\My Projects" a', 'saved quoted value replaces: ' + S);
+  // words are added once
+  Check(sgcFSearchQueryApplySaved('foo', 'foo bar bar') = 'foo bar',
+    'saved words added once');
+  Check(sgcFSearchQueryApplySaved('FOO', 'foo') = 'FOO',
+    'saved word already there, other case');
+  S := sgcFSearchQueryApplySaved('foo', '"my file"');
+  Check(S = 'foo "my file"', 'saved quoted word added: ' + S);
+  Check(sgcFSearchQueryApplySaved('ext:foo', 'foo') = 'ext:foo foo',
+    'saved word is not a filter value');
+  Check(sgcFSearchQueryApplySaved('a', 'C:\x foo:bar') = 'a C:\x foo:bar',
+    'saved unknown keys are words');
+  // an empty value removes the key
+  Check(sgcFSearchQueryApplySaved('in:C:\a b', 'in:') = 'b',
+    'saved empty value');
+  // open quotes do not swallow what is added
+  S := sgcFSearchQueryApplySaved('"foo', 'ext:pas');
+  Check(S = '"foo" ext:pas', 'saved closes an open quote: ' + S);
+  // empty text and empty saved
+  Check(sgcFSearchQueryApplySaved('', '') = '', 'saved empty both');
+  Check(sgcFSearchQueryApplySaved('foo  ext:txt', '') = 'foo  ext:txt',
+    'saved empty saved');
+  Check(sgcFSearchQueryApplySaved('foo', '   ') = 'foo', 'saved blank saved');
+  S := 'ext:pas in:C:\Projects mtime:week';
+  Check(sgcFSearchQueryApplySaved('', S) = S, 'saved empty text');
+  Check(sgcFSearchQueryApplySaved('   ', 'foo') = 'foo', 'saved blank text');
+  Check(sgcFSearchQueryApplySaved('', 'uniq ext:pas') = 'uniq ext:pas',
+    'saved empty text keeps the saved order');
+  Check(sgcFSearchQueryApplySaved('', 'foo ext:pas bar') = 'foo ext:pas bar',
+    'saved empty text, word between filters');
+  // applying twice changes nothing
+  Stable('', 'ext:pas in:C:\Projects mtime:week');
+  Stable('foo bar', 'ext:pas foo in:"C:\My Projects" baz');
+  Stable('ext:txt in:C:\x in:C:\y word', 'in:a ext:p in:b foo');
+  Stable('a b', 'path:x in:y path:z in:w q');
+  Stable('"open', 'ext:pas');
+  Stable('x', 'in:"open');
+  Stable('foo   bar', 'baz');
+  Stable('FOO', 'foo "my file" ext:pas');
+end;
+
 { ---- match -------------------------------------------------------------- }
 
 procedure TestMatch;
@@ -911,6 +995,7 @@ begin
     SetEnvironmentVariable(PChar(SGCFS_HOME_ENV), PChar(GHome));
     GNowFT := sgcFSearchNowFileTime;
     TestParser;
+    TestApplySaved;
     TestMatch;
     GIdx := TsgcFSearchIndex.Create;
     GUsage := TsgcFSearchUsage.Create(GHome + '\usage.json');
