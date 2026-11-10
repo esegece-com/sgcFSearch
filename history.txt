@@ -12,6 +12,14 @@
 Versions
 --------
 
+1.0.5: 2026 November
+
+ [+] Sort by directory: sort:dir and a Directory entry in the Sort chip order the results by folder path, then by name.
+ [*] Search bar: the mouse wheel scrolls the results also when the focus is in the search box, as Windows 7 sends it. One notch moves one row with the default system setting, and high resolution wheels scroll smoothly.
+ [*] Search bar: reopening it with no new text keeps the place in the list and the selected row.
+ [*] Search bar: the scroll bar follows the list after a new search with the same number of rows.
+ [*] Portable mode: the marker file wins over SGCFSEARCH_HOME, and sgcFSearch.portable.txt also counts as the marker.
+
 1.0.4: 2026 November
 
  [+] Search bar: drag its empty area to move it. The position is remembered per monitor layout, and a double click on the empty area centers it again.

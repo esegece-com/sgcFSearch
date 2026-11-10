@@ -35,7 +35,8 @@ unit sgcFSearch_Query;
   mtime:>2026-01-01 (after that day) >= < <= = and 2026-10-01..2026-10-31
   re:<regex>             on the name, case-insensitive
   limit:N
-  sort:name|size|date|rank  name ascending, size and date descending;
+  sort:name|size|date|dir|rank  name and dir ascending, size and date
+  descending; dir also as directory, folder or path;
   suffix -asc / -desc forces the direction (sort:size-asc), a leading -
   reverses the default (sort:-date = oldest first)
   grep:<text> regex:<pattern> sym:<name>  content filters, parsed only.
@@ -55,7 +56,7 @@ const
   SGCFS_DEFAULT_LIMIT = 100;
 
 type
-  TsgcFSearchSortKind = (fssRank, fssName, fssSize, fssDate);
+  TsgcFSearchSortKind = (fssRank, fssName, fssSize, fssDate, fssDir);
   TsgcFSearchKindFilter = (fskAny, fskFile, fskDir);
 
   TsgcFSearchTerm = record
@@ -594,6 +595,12 @@ begin
     Q.Sort := fssDate;
     Q.SortDesc := True;
   end
+  else if (v = 'dir') or (v = 'directory') or (v = 'folder') or (v = 'path')
+  then
+  begin
+    Q.Sort := fssDir;
+    Q.SortDesc := False;
+  end
   else if (v = 'rank') or (v = 'score') then
   begin
     Q.Sort := fssRank;
@@ -928,8 +935,8 @@ begin
       if (vCounts[i] = 1) and (vValue <> '') then
         Result := sgcFSearchQuerySetFilter(Result, vKey, vValue);
     end
-    else if (vTokens[i].Value <> '') and
-      not DoHasPlainWord(Result, vTokens[i].Value) then
+    else if (vTokens[i].Value <> '') and not DoHasPlainWord(Result,
+      vTokens[i].Value) then
       DoAppendPart(Result, Copy(vSaved, vTokens[i].Start, vTokens[i].Len));
   end;
   for i := 0 to High(vTokens) do

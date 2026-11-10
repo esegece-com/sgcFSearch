@@ -34,7 +34,9 @@ unit sgcFSearch_Search;
   Ranking (sort:rank): Score = 100 * tier - 2 * min(depth, 40) + usage
   bonus (10 * ln(1 + boost), max 60) + 1 for an exact-case match of the
   first term; ties: shorter name, then lower entry index. sort:name /
-  size / date use that field first and the score as tie-break. }
+  size / date use that field first and the score as tie-break. sort:dir
+  orders by the parent folder path, then by the name: two folders are compared
+  by walking their ancestor chains, nothing is built or kept for it. }
 
 interface
 
@@ -52,6 +54,7 @@ type
     NameId: Integer; // valid for the Generation of the results
     Score: Single;
     IsDir: Boolean;
+    Depth: Word; // number of ancestors, used by sort:dir
     Size: Int64; // files: bytes; folders: total of the descendant files
     // with sort:size, -1 otherwise
     MTime: Int64; // FILETIME UTC
@@ -184,6 +187,7 @@ type
     function Depth(Idx: Integer): Integer;
     function BoostOf(Idx: Integer): Single;
     function CmpName(A, B: Integer): Integer;
+    function CmpFolders(A, DA, B, DB: Integer): Integer;
     procedure Execute(var Results: TsgcFSearchResults);
   end;
 
@@ -536,9 +540,40 @@ begin
   Result := la - lb;
 end;
 
+/// Order of two different folders (entry indexes, -1 = none) by path,
+/// component by component with the folding of CmpName. DA and DB are the
+/// lengths of their ancestor chains. A folder goes before the folders inside
+/// it; siblings with the same folded name stay apart by entry index.
+function TsgcFSearchRun.CmpFolders(A, DA, B, DB: Integer): Integer;
+var
+  i, pa, pb: Integer;
+begin
+  for i := 1 to DA - DB do
+    A := Entries[A].ParentIdx;
+  for i := 1 to DB - DA do
+    B := Entries[B].ParentIdx;
+  if A = B then
+    Exit(DA - DB);
+  while (A >= 0) and (B >= 0) do
+  begin
+    pa := Entries[A].ParentIdx;
+    pb := Entries[B].ParentIdx;
+    if pa = pb then
+    begin
+      Result := CmpName(Entries[A].NameId, Entries[B].NameId);
+      if Result = 0 then
+        Result := A - B;
+      Exit;
+    end;
+    A := pa;
+    B := pb;
+  end;
+  Result := DA - DB;
+end;
+
 function TsgcFSearchRun.Better(const A, B: TsgcFSearchResult): Boolean;
 var
-  c, la, lb: Integer;
+  c, la, lb, vPA, vPB: Integer;
 begin
   case Q.Sort of
     fssName:
@@ -553,6 +588,17 @@ begin
     fssDate:
       if A.MTime <> B.MTime then
         Exit((A.MTime > B.MTime) = Q.SortDesc);
+    fssDir:
+      begin
+        vPA := Entries[A.EntryIdx].ParentIdx;
+        vPB := Entries[B.EntryIdx].ParentIdx;
+        if vPA = vPB then
+          c := CmpName(A.NameId, B.NameId)
+        else
+          c := CmpFolders(vPA, A.Depth, vPB, B.Depth);
+        if c <> 0 then
+          Exit((c < 0) <> Q.SortDesc);
+      end;
   end;
   if A.Score <> B.Score then
     Exit(A.Score > B.Score);
@@ -718,7 +764,8 @@ begin
       vR.Size := Totals[i]
     else
       vR.Size := -1;
-    vR.Score := 100 * (vQ and 7) - 2 * Min(Depth(i), 40) + BoostOf(i) +
+    vR.Depth := Depth(i);
+    vR.Score := 100 * (vQ and 7) - 2 * Min(vR.Depth, 40) + BoostOf(i) +
       Ord((vQ and CS_BIT_EXACT_CASE) <> 0);
     vR.MatchPos := -1;
     vR.MatchLen := 0;

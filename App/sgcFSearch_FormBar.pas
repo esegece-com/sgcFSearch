@@ -82,6 +82,7 @@ type
     FWarning: string;
     FFallback: Boolean;
     FKeep: Boolean;
+    FWheelRest: Integer;
     FStatusShown: string;
     FEngineText: string;
     FBoxRect: TRect;
@@ -184,6 +185,7 @@ type
   public
     procedure ShowBar(const InitialText: string = '');
     procedure HideBar;
+    procedure MouseWheelHandler(var Message: TMessage); override;
     /// Main thread only (TThread.Queue from Engine.OnChanged).
     procedure NotifyIndexChanged;
     /// Pin on, bar on screen and active. A click on the tray icon has already
@@ -439,8 +441,8 @@ begin
       end;
     fsbcSort:
       begin
-        Captions := ['Relevance', 'Name', 'Size', 'Date'];
-        Values := ['', 'name', 'size', 'date'];
+        Captions := ['Relevance', 'Name', 'Size', 'Date', 'Directory'];
+        Values := ['', 'name', 'size', 'date', 'dir'];
       end;
   else
     begin
@@ -992,7 +994,8 @@ begin
   FShown := True;
   pbChips.Invalidate;
   DoUpdateEngineText;
-  DoStartSearch(vOnScreen and (InitialText = ''));
+  // a reopen with no new text keeps the place, new text is a new search
+  DoStartSearch(InitialText = '');
   if not vOnScreen then
     DoPlaceAtCursor;
   if not Visible then
@@ -1213,7 +1216,11 @@ begin
   end;
   // rows cover the list unless it shrank: only then the background is erased
   if lstResults.HandleAllocated then
+  begin
+    // with redraw off the list moves its scroll bar but does not paint it
+    RedrawWindow(lstResults.Handle, nil, 0, RDW_INVALIDATE or RDW_FRAME);
     InvalidateRect(lstResults.Handle, nil, vCount < vOldCount);
+  end;
   pbStatus.Invalidate;
 end;
 
@@ -1301,6 +1308,35 @@ begin
   else
     i := EnsureRange(i + Delta, 0, High(FRows));
   lstResults.ItemIndex := i;
+end;
+
+// Wherever the wheel lands (Windows 7 sends it to the focused search box, later
+// versions to the window under the pointer) it scrolls the results and leaves
+// the selection alone. Result 1 stops the native list scrolling a second time.
+procedure TsgcFSearchBarForm.MouseWheelHandler(var Message: TMessage);
+var
+  vDelta, vNotches, vRows: Integer;
+  vLines: UINT;
+begin
+  Message.Result := 1;
+  vDelta := TCMMouseWheel(Message).WheelDelta;
+  // high resolution wheels send small deltas: they add up to whole notches, the
+  // rest waits for the next message unless the direction changes
+  if ((FWheelRest > 0) and (vDelta < 0)) or ((FWheelRest < 0) and (vDelta > 0))
+  then
+    FWheelRest := 0;
+  Inc(FWheelRest, vDelta);
+  vNotches := FWheelRest div WHEEL_DELTA;
+  if vNotches = 0 then
+    Exit;
+  Dec(FWheelRest, vNotches * WHEEL_DELTA);
+  vLines := 3;
+  SystemParametersInfo(SPI_GETWHEELSCROLLLINES, 0, @vLines, 0);
+  // the setting is in text lines and a row is about three of them; anything
+  // above a page, WHEEL_PAGESCROLL included, scrolls one page
+  vRows := EnsureRange(Int64(vLines div 3), 1, CS_BAR_ROWS);
+  lstResults.TopIndex := EnsureRange(lstResults.TopIndex - vNotches * vRows, 0,
+    Max(0, lstResults.Count - CS_BAR_ROWS));
 end;
 
 procedure TsgcFSearchBarForm.DoOpenSelected;

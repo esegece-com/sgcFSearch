@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>sgcFSearch Help</title>
-<meta name="description" content="sgcFSearch 1.0.4 user guide: whole-disk file search for Windows, search bar, query syntax, content search, command line and pipe API.">
+<meta name="description" content="sgcFSearch 1.0.5 user guide: whole-disk file search for Windows, search bar, query syntax, content search, command line and pipe API.">
 <style>
 :root {
   --bg: #ffffff;
@@ -243,7 +243,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <aside class="sidebar" aria-label="Table of contents">
   <div class="brand">
     <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="8" fill="#0b5cb5"/><circle cx="15" cy="15" r="7" fill="none" stroke="#fff" stroke-width="2.6"/><line x1="20" y1="20" x2="26" y2="26" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
-    <div><b>sgcFSearch</b><span>User Guide, version 1.0.4</span></div>
+    <div><b>sgcFSearch</b><span>User Guide, version 1.0.5</span></div>
   </div>
   <details class="toc" id="toc" open>
     <summary>Contents</summary>
@@ -286,7 +286,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
   <h1>sgcFSearch</h1>
   <p class="subtitle">User Guide</p>
   <div class="rule" aria-hidden="true"></div>
-  <p class="meta">Version 1.0.4<br>2026-11-10<br>eSeGeCe, <a href="https://www.esegece.com">https://www.esegece.com</a><br>Copyright &copy; 2026 eSeGeCe</p>
+  <p class="meta">Version 1.0.5<br>2026-11-10<br>eSeGeCe, <a href="https://www.esegece.com">https://www.esegece.com</a><br>Copyright &copy; 2026 eSeGeCe</p>
 </header>
 
 <nav class="print-toc" aria-label="Contents">
@@ -429,7 +429,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <div class="note"><b>Note.</b> Do not use both ways side by side. A copy from the zip and a copy from the setup would share the same data folder and the same login entry, and the PATH could point to either one. Uninstall the one you do not want before you use the other.</div>
 
 <h3 id="install-portable">Portable mode</h3>
-<p>Portable mode is for the zip, not for the installed version. Create an empty file named <code>sgcFSearch.portable</code> next to <code>sgcFSearch.exe</code> and that copy becomes portable. The file alone turns it on, its content does not matter and there is no command line switch.</p>
+<p>Portable mode is for the zip, not for the installed version. Create an empty file named <code>sgcFSearch.portable</code> next to <code>sgcFSearch.exe</code> and that copy becomes portable. The file alone turns it on, its content does not matter and there is no command line switch. A file named <code>sgcFSearch.portable.txt</code> also works, for example when Notepad adds the extension and Windows hides it. The file wins over <code>SGCFSEARCH_HOME</code>, and a folder with either name does not count.</p>
 <div class="tbl"><table>
 <tr><th>Item</th><th>In portable mode</th></tr>
 <tr><td>Data folder</td><td><code>data\&lt;computer name&gt;</code> inside the program folder. Each computer has its own folder, so one copy on a USB stick used on several PCs never mixes indexes.</td></tr>
@@ -598,7 +598,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <tr><td>Modified</td><td>Today, Yesterday, Past week, Past month, Past year</td><td><code>mtime:today</code>, <code>mtime:yesterday</code>, <code>mtime:week</code>, <code>mtime:month</code>, <code>mtime:year</code></td></tr>
 <tr><td>Size</td><td>Empty, Under 1 MB, 1-100 MB, Over 100 MB, Over 1 GB</td><td><code>size:empty</code>, <code>size:&lt;1mb</code>, <code>size:1mb..100mb</code>, <code>size:&gt;100mb</code>, <code>size:&gt;1gb</code></td></tr>
 <tr><td>In folder...</td><td>Choose folder...</td><td><code>in:&lt;folder&gt;</code>, in double quotes when the path has spaces</td></tr>
-<tr><td>Sort</td><td>Relevance, Name, Size, Date</td><td>Relevance removes <code>sort:</code>. The others write <code>sort:name</code>, <code>sort:size</code>, <code>sort:date</code></td></tr>
+<tr><td>Sort</td><td>Relevance, Name, Size, Date, Directory</td><td>Relevance removes <code>sort:</code>. The others write <code>sort:name</code>, <code>sort:size</code>, <code>sort:date</code>, <code>sort:dir</code></td></tr>
 </table></div>
 <p>An active chip shows its value: the Type chip lists the categories (for example <i>Images, Code</i>), the In folder chip shows <i>In</i> and the folder name, and the Sort chip shows <i>Sort: Name</i>.</p>
 <p>The <b>Saved</b> chip has no filter of its own and never turns blue. It keeps the searches you repeat, each one a name and a query such as <code>ext:pas in:C:\Projects mtime:week</code>. Its menu lists the saved filters in alphabetical order, then <b>Save current search...</b>, which asks for a name and is disabled while the search box is empty, then a <b>Remove</b> submenu. A name that already exists, ignoring case, is replaced.</p>
@@ -727,6 +727,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <tr><td><code>sort:name</code></td><td>Name, A to Z</td></tr>
 <tr><td><code>sort:size</code></td><td>Largest first. Folders are sorted by the total size of their contents.</td></tr>
 <tr><td><code>sort:date</code> (also <code>sort:mtime</code>)</td><td>Newest first</td></tr>
+<tr><td><code>sort:dir</code> (also <code>sort:directory</code>, <code>sort:folder</code>, <code>sort:path</code>)</td><td>Folder path, A to Z, compared folder by folder so the contents of a folder stay together. Inside a folder, by name.</td></tr>
 <tr><td><code>sort:size-asc</code>, <code>sort:name-desc</code></td><td>The suffix <code>-asc</code> or <code>-desc</code> forces the direction</td></tr>
 <tr><td><code>sort:-date</code>, <code>sort:-name</code></td><td>A leading <code>-</code> reverses the default: oldest first, Z to A</td></tr>
 </table></div>
@@ -998,7 +999,7 @@ sgcfs stop</code></pre>
 sgcfs 'package.json !node_modules\ | ForEach-Object { Split-Path $_ }</code></pre>
 <p><code>sgcfs status</code> prints one value per line (example values):</p>
 <pre><code>state            ready
-version          1.0.4
+version          1.0.5
 pid              12345
 files            3,404,349
 folders          447,577
@@ -1061,7 +1062,7 @@ log              C:\Users\you\AppData\Local\sgcFSearch\daemon.log</code></pre>
 <h4>Status</h4>
 <pre><code>{"id":3,"status":true}</code></pre>
 <pre><code>{"id":3,"ok":true,"state":"ready","files":5080000,"folders":610000,"crawled":123456,
- "content_pending":42,"content_indexed":36000,"pid":1234,"version":"1.0.4",
+ "content_pending":42,"content_indexed":36000,"pid":1234,"version":"1.0.5",
  "roots":["C:\\","D:\\"],"log":"C:\\Users\\you\\AppData\\Local\\sgcFSearch\\daemon.log"}</code></pre>
 <p><code>state</code> is one of <code>starting</code>, <code>loading</code>, <code>crawling</code>, <code>catchup</code>, <code>ready</code>, <code>stopping</code>, <code>stopped</code> (see <a href="#start-states">Index states</a>). <code>roots</code> lists the indexed drives.</p>
 
@@ -1260,6 +1261,14 @@ app: hotkey Win+Shift+F active</code></pre>
 <!-- ============================================================ 15 -->
 <section class="chapter" id="history">
 <h2><span class="num">15</span>Version history</h2>
+<h3 id="v105">1.0.5, November 2026</h3>
+<ul>
+  <li>Sort by directory: <code>sort:dir</code> and a Directory entry in the Sort chip order the results by folder path, then by name.</li>
+  <li>Search bar: the mouse wheel scrolls the results also when the focus is in the search box, as Windows 7 sends it. One notch moves one row with the default system setting, and high resolution wheels scroll smoothly.</li>
+  <li>Search bar: reopening it with no new text keeps the place in the list and the selected row.</li>
+  <li>Search bar: the scroll bar follows the list after a new search with the same number of rows.</li>
+  <li>Portable mode: the marker file wins over <code>SGCFSEARCH_HOME</code>, and <code>sgcFSearch.portable.txt</code> also counts as the marker.</li>
+</ul>
 <h3 id="v104">1.0.4, November 2026</h3>
 <ul>
   <li>Search bar: drag its empty area to move it. The position is remembered per monitor layout, and a double click on the empty area centers it again.</li>
@@ -1297,7 +1306,7 @@ app: hotkey Win+Shift+F active</code></pre>
   <li>Single instance: a second start shows the search bar of the running instance.</li>
   <li>Distributed as a signed per user installer (recommended) and as a zip. The setup offers the PATH entry and Start at login as tasks; with the zip, <code>sgcfs install</code> adds them.</li>
 </ul>
-<p class="footer">sgcFSearch 1.0.4. Copyright &copy; 2026 eSeGeCe. <a href="https://www.esegece.com">https://www.esegece.com</a></p>
+<p class="footer">sgcFSearch 1.0.5. Copyright &copy; 2026 eSeGeCe. <a href="https://www.esegece.com">https://www.esegece.com</a></p>
 </section>
 
 </main>

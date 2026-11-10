@@ -55,7 +55,7 @@ All words must match the file or folder name (case-insensitive, AND semantics). 
 | `mtime:today`, `mtime:week`, `mtime:<7d`, `mtime:>2026-01-01`, `mtime:2026-10-01..2026-10-31` | modified time; `today`, `yesterday`, `week`, `month`, `year`, relative units h d w y |
 | `re:<regex>` | regular expression on the name |
 | `limit:N` | maximum number of results |
-| `sort:name`, `sort:size`, `sort:date`, `sort:rank` | sort order; add `-asc` or `-desc` to force the direction, a leading `-` reverses the default |
+| `sort:name`, `sort:size`, `sort:date`, `sort:dir`, `sort:rank` | sort order, `sort:dir` (also `directory`, `folder`, `path`) by folder path, then name; add `-asc` or `-desc` to force the direction, a leading `-` reverses the default |
 | `grep:<text>` | content search: lines of indexed text files containing the text |
 | `regex:<pattern>` | content search with a regular expression |
 | `sym:<name>` | content search for a symbol (identifier) |
@@ -167,7 +167,7 @@ All files are in the data folder, `%LOCALAPPDATA%\sgcFSearch` by default.
 
 ## Portable mode
 
-For the zip, not the installed version. Create an empty file named `sgcFSearch.portable` next to `sgcFSearch.exe` and that copy becomes portable. There is no command line switch, the file alone turns it on.
+For the zip, not the installed version. Create an empty file named `sgcFSearch.portable` next to `sgcFSearch.exe` and that copy becomes portable. There is no command line switch, the file alone turns it on. A file named `sgcFSearch.portable.txt` also works, for example when Notepad adds the extension and Windows hides it. The file wins over `SGCFSEARCH_HOME`, and a folder with either name does not count.
 
 - All data files go to `data\<computer name>` inside the program folder. Each computer has its own folder, so one copy on a USB stick used on several PCs never mixes indexes.
 - Nothing is written outside the program folder, so the tray entry Start at login is disabled, and `sgcfs install` and `sgcfs uninstall` print a message and exit with code 2.

@@ -839,11 +839,12 @@ end;
 
 procedure TestPortable;
 var
-  vDir, vPlain, vMarker, vExpected: string;
+  vDir, vPlain, vMarker, vMarkerTxt, vExpected: string;
 begin
   vDir := GBase + '\portable';
   vPlain := GBase + '\portable_none';
   vMarker := vDir + '\' + SGCFS_PORTABLE_MARKER;
+  vMarkerTxt := vDir + '\' + SGCFS_PORTABLE_MARKER_TXT;
   ForceDirectories(vDir);
   ForceDirectories(vPlain);
   vExpected := vDir + '\data\' + sgcFSearchSafeFolderName
@@ -863,9 +864,12 @@ begin
   TFile.WriteAllText(vMarker, 'any content');
   Check(sgcFSearchPortableDataDir(vDir) = vExpected,
     'portable: marker with content');
-  // order: SGCFSEARCH_HOME, marker, %LOCALAPPDATA%
-  Check(SameText(sgcFSearchDataDirFor(vDir), ExcludeTrailingPathDelimiter(GHome)
-    ), 'portable: SGCFSEARCH_HOME wins over the marker');
+  // order: marker, SGCFSEARCH_HOME, %LOCALAPPDATA%
+  Check(sgcFSearchDataDirFor(vDir) = vExpected,
+    'portable: the marker wins over SGCFSEARCH_HOME');
+  Check(SameText(sgcFSearchDataDirFor(vPlain),
+    ExcludeTrailingPathDelimiter(GHome)),
+    'portable: no marker, SGCFSEARCH_HOME wins over LOCALAPPDATA');
   SetEnvironmentVariable(SGCFS_HOME_ENV, nil);
   try
     Check(sgcFSearchDataDirFor(vDir) = vExpected,
@@ -876,6 +880,18 @@ begin
   finally
     SetEnvironmentVariable(SGCFS_HOME_ENV, PChar(GHome));
   end;
+  // the name of the file when Windows hides the extension it was saved with
+  TFile.Delete(vMarker);
+  ForceDirectories(vMarkerTxt);
+  Check(sgcFSearchPortableDataDir(vDir) = '',
+    'portable: a folder with the .txt marker name is not a marker');
+  RemoveDir(vMarkerTxt);
+  TFile.WriteAllText(vMarkerTxt, '');
+  Check(sgcFSearchPortableDataDir(vDir) = vExpected, 'portable: .txt marker');
+  Check(sgcFSearchDataDirFor(vDir) = vExpected,
+    'portable: the .txt marker wins over SGCFSEARCH_HOME');
+  TFile.Delete(vMarkerTxt);
+  Check(sgcFSearchPortableDataDir(vDir) = '', 'portable: marker removed');
   Check(sgcFSearchSafeFolderName('A:B*C') = 'A_B_C',
     'safe name: invalid chars');
   Check(sgcFSearchSafeFolderName('PC. ') = 'PC',

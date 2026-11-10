@@ -26,6 +26,8 @@ const
   SGCFS_SAVED_FILTERS_FILE = 'saved_filters.json';
   SGCFS_HOME_ENV = 'SGCFSEARCH_HOME'; // overrides the data folder (tests)
   SGCFS_PORTABLE_MARKER = 'sgcFSearch.portable'; // next to the exe: portable
+  // the same file when Windows hides the extension it was saved with
+  SGCFS_PORTABLE_MARKER_TXT = 'sgcFSearch.portable.txt';
 
 type
   /// One entry of the Saved chip of the search bar.
@@ -79,17 +81,17 @@ type
   /// Data folder of the running exe, see sgcFSearchDataDirFor. Created when
   /// missing. No trailing backslash.
 function sgcFSearchDataDir: string;
-/// Data folder for an exe folder, in this order: %SGCFSEARCH_HOME%, the
-/// portable folder of ExeDir, %LOCALAPPDATA%\sgcFSearch. Creates nothing.
+/// Data folder for an exe folder, in this order: the portable folder of
+/// ExeDir, %SGCFSEARCH_HOME%, %LOCALAPPDATA%\sgcFSearch. Creates nothing.
 /// No trailing backslash.
 function sgcFSearchDataDirFor(const ExeDir: string): string;
 /// Folder of the running exe.
 function sgcFSearchExeDir: string;
-/// ExeDir\data\<computer name> when the file sgcFSearch.portable is in ExeDir
-/// (any content, a folder with that name does not count), else ''. Creates
-/// nothing.
+/// ExeDir\data\<computer name> when the file sgcFSearch.portable or
+/// sgcFSearch.portable.txt is in ExeDir (any content, a folder with that name
+/// does not count), else ''. Creates nothing.
 function sgcFSearchPortableDataDir(const ExeDir: string): string;
-/// True when the file sgcFSearch.portable is next to the running exe.
+/// True when the portable marker file is next to the running exe.
 function sgcFSearchIsPortable: Boolean;
 /// Name with the characters a folder name cannot hold replaced by '_', the
 /// trailing dots and spaces removed and reserved device names prefixed.
@@ -174,7 +176,8 @@ begin
   Result := '';
   vDir := IncludeTrailingPathDelimiter(ExeDir);
   // FileExists is False for a folder with that name
-  if FileExists(vDir + SGCFS_PORTABLE_MARKER) then
+  if FileExists(vDir + SGCFS_PORTABLE_MARKER) or
+    FileExists(vDir + SGCFS_PORTABLE_MARKER_TXT) then
     Result := vDir + 'data\' + DoComputerName;
 end;
 
@@ -185,9 +188,9 @@ end;
 
 function sgcFSearchDataDirFor(const ExeDir: string): string;
 begin
-  Result := DoGetEnv(SGCFS_HOME_ENV);
+  Result := sgcFSearchPortableDataDir(ExeDir);
   if Result = '' then
-    Result := sgcFSearchPortableDataDir(ExeDir);
+    Result := DoGetEnv(SGCFS_HOME_ENV);
   if Result = '' then
   begin
     Result := DoGetEnv('LOCALAPPDATA');

@@ -198,6 +198,20 @@ begin
   Check((q.Sort = fssDate) and not q.SortDesc, 'sort -date');
   q := sgcFSearchParseQuery('sort:bogus', vNow);
   Check((q.Sort = fssRank) and (Length(q.Warnings) = 1), 'sort invalid');
+  q := sgcFSearchParseQuery('sort:dir', vNow);
+  Check((q.Sort = fssDir) and not q.SortDesc, 'sort dir');
+  q := sgcFSearchParseQuery('sort:directory', vNow);
+  Check((q.Sort = fssDir) and not q.SortDesc, 'sort directory');
+  q := sgcFSearchParseQuery('sort:folder', vNow);
+  Check((q.Sort = fssDir) and not q.SortDesc, 'sort folder');
+  q := sgcFSearchParseQuery('sort:path', vNow);
+  Check((q.Sort = fssDir) and not q.SortDesc, 'sort path');
+  q := sgcFSearchParseQuery('sort:-dir', vNow);
+  Check((q.Sort = fssDir) and q.SortDesc, 'sort -dir');
+  q := sgcFSearchParseQuery('sort:dir-desc', vNow);
+  Check((q.Sort = fssDir) and q.SortDesc, 'sort dir-desc');
+  q := sgcFSearchParseQuery('sort:dir-asc', vNow);
+  Check((q.Sort = fssDir) and not q.SortDesc, 'sort dir-asc');
   q := sgcFSearchParseQuery('grep:"foo bar" regex:ba+r sym:TFoo ext:pas', vNow);
   Check((q.Grep = 'foo bar') and (q.ContentRegex = 'ba+r') and (q.Sym = 'TFoo')
     and q.HasContentFilters and not q.HasNameTerms, 'content filters');
@@ -769,6 +783,116 @@ end;
 
 { ---- synthetic 2M index and timings ------------------------------------- }
 
+/// Folders that hold an entry, outermost first. Caller holds the read lock.
+function DirChain(Idx: Integer): TArray<Integer>;
+begin
+  Result := nil;
+  Idx := GIdx.Entries[Idx].ParentIdx;
+  while Idx >= 0 do
+  begin
+    Result := [Idx] + Result;
+    Idx := GIdx.Entries[Idx].ParentIdx;
+  end;
+end;
+
+/// True when the results follow sort:dir, checked on the folded names of the
+/// folders one by one. Two folders with the same folded name in one folder
+/// keep apart by entry index.
+function InDirOrder(const R: TsgcFSearchResults): Boolean;
+var
+  i, j, c: Integer;
+  vA, vB: TArray<Integer>;
+begin
+  Result := True;
+  GIdx.BeginRead;
+  try
+    for i := 1 to High(R.Items) do
+    begin
+      vA := DirChain(R.Items[i - 1].EntryIdx);
+      vB := DirChain(R.Items[i].EntryIdx);
+      c := 0;
+      j := 0;
+      while (c = 0) and (j < Length(vA)) and (j < Length(vB)) do
+      begin
+        if vA[j] <> vB[j] then
+        begin
+          c := CompareStr(sgcFSearchFold(GIdx.NameOf(vA[j])),
+            sgcFSearchFold(GIdx.NameOf(vB[j])));
+          if c = 0 then
+            c := vA[j] - vB[j];
+        end;
+        Inc(j);
+      end;
+      if c = 0 then
+        c := Length(vA) - Length(vB);
+      if c = 0 then
+        c := CompareStr(sgcFSearchFold(GIdx.NameOf(R.Items[i - 1].EntryIdx)),
+          sgcFSearchFold(GIdx.NameOf(R.Items[i].EntryIdx)));
+      if c > 0 then
+        Exit(False);
+    end;
+  finally
+    GIdx.EndRead;
+  end;
+end;
+
+procedure TestSortDir;
+const
+  CS_ASC = 'alpha.txt,Zeta.txt,n.txt,a.txt,Beta.txt,c.txt,x1.txt,b.txt,' +
+    'm.txt,p.txt,r.txt,q.txt';
+  CS_DESC = 'q.txt,r.txt,p.txt,m.txt,b.txt,x1.txt,c.txt,Beta.txt,a.txt,' +
+    'n.txt,Zeta.txt,alpha.txt';
+var
+  vC, vD, vSub, vDeep, vDup1, vDup2, vApple, vSub2: Integer;
+begin
+  // a new index, the items go in out of order on purpose
+  GS.Free;
+  GIdx.Free;
+  GIdx := TsgcFSearchIndex.Create;
+  GS := TsgcFSearchSearcher.Create(GIdx, GUsage);
+  GIdx.BeginWrite;
+  try
+    vD := GIdx.Root(GIdx.AddRoot('D:\S', 2)).EntryIdx;
+    vC := GIdx.Root(GIdx.AddRoot('C:\R', 1)).EntryIdx;
+    AddF(vD, 'm.txt', 1, 1);
+    // same folded name twice in one folder (case sensitive folder)
+    vDup1 := AddD(vD, 'dup');
+    vDup2 := AddD(vD, 'DUP');
+    AddF(vDup1, 'r.txt', 1, 1);
+    AddF(vDup2, 'q.txt', 1, 1);
+    AddF(vDup1, 'p.txt', 1, 1);
+    // a raw compare of the paths would put sub2 before Sub\...
+    vSub2 := AddD(vC, 'sub2');
+    AddF(vSub2, 'b.txt', 1, 1);
+    vSub := AddD(vC, 'Sub');
+    vDeep := AddD(vSub, 'deep');
+    AddF(vDeep, 'x1.txt', 1, 1);
+    AddF(vDeep, 'c.txt', 1, 1);
+    AddF(vSub, 'Beta.txt', 1, 1);
+    AddF(vSub, 'a.txt', 1, 1);
+    vApple := AddD(vC, 'Apple');
+    AddF(vApple, 'n.txt', 1, 1);
+    AddF(vC, 'Zeta.txt', 1, 1);
+    AddF(vC, 'alpha.txt', 1, 1);
+  finally
+    GIdx.EndWrite;
+  end;
+  Check(Names('ext:txt sort:dir') = CS_ASC,
+    'sort dir: component order, contents together, names inside');
+  Check(Names('ext:txt sort:directory') = CS_ASC, 'sort directory order');
+  Check(Names('ext:txt sort:folder') = CS_ASC, 'sort folder order');
+  Check(Names('ext:txt sort:path') = CS_ASC, 'sort path order');
+  Check(Names('ext:txt sort:dir-desc') = CS_DESC, 'sort dir-desc order');
+  Check(Names('ext:txt sort:-dir') = CS_DESC, 'sort -dir order');
+  Check(Names('kind:dir sort:dir') = 'Apple,Sub,sub2,deep,dup,DUP',
+    'sort dir: folders by their parent path');
+  Check(Names('s kind:dir sort:dir') = 'D:\S,Sub,sub2',
+    'sort dir: a root has no parent and goes first');
+  Check(Names('ext:txt sort:dir limit:3') = 'alpha.txt,Zeta.txt,n.txt',
+    'sort dir: limit keeps the first ones');
+  Check(Total('ext:txt sort:dir limit:3') = 12, 'sort dir: total with limit');
+end;
+
 function Rnd(n: Integer): Integer;
 begin
   GSeed := GSeed xor (GSeed shl 13);
@@ -947,8 +1071,9 @@ end;
 procedure TestSynthetic;
 var
   vT0: Int64;
-  vFolders: Integer;
-  vR: TsgcFSearchResults;
+  vFolders, i: Integer;
+  vR, vTop: TsgcFSearchResults;
+  vSame: Boolean;
 begin
   GS.Free;
   GIdx.Free;
@@ -982,6 +1107,15 @@ begin
   Writeln(Format('[INFO] first sort:size (folder totals): %.2f ms',
     [vR.ElapsedMs]));
   TimeQuery('sort:size', 'report sort:size');
+  // sort:dir across many chunks: the limit returns the first ones
+  GS.Search('report sort:dir', 1000000, vR);
+  GS.Search('report sort:dir', 50, vTop);
+  vSame := (vR.Total = vTop.Total) and (Length(vTop.Items) = 50);
+  for i := 0 to High(vTop.Items) do
+    vSame := vSame and (vTop.Items[i].EntryIdx = vR.Items[i].EntryIdx);
+  Check(vSame, 'sort dir: limit returns the first ones of the full order');
+  Check(InDirOrder(vR), 'sort dir: matches a compare on the full paths');
+  TimeQuery('sort:dir', 'report sort:dir');
   TimeQuery('path token', 'src\main');
 end;
 
@@ -1003,6 +1137,7 @@ begin
     try
       TestSearch;
       GUsage.Clear;
+      TestSortDir;
       TestSynthetic;
     finally
       GS.Free;
