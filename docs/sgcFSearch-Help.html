@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>sgcFSearch Help</title>
-<meta name="description" content="sgcFSearch 1.0.5 user guide: whole-disk file search for Windows, search bar, query syntax, content search, command line and pipe API.">
+<meta name="description" content="sgcFSearch 1.0.6 user guide: whole-disk file search for Windows, search bar, query syntax, content search, command line and pipe API.">
 <style>
 :root {
   --bg: #ffffff;
@@ -243,7 +243,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <aside class="sidebar" aria-label="Table of contents">
   <div class="brand">
     <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="8" fill="#0b5cb5"/><circle cx="15" cy="15" r="7" fill="none" stroke="#fff" stroke-width="2.6"/><line x1="20" y1="20" x2="26" y2="26" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
-    <div><b>sgcFSearch</b><span>User Guide, version 1.0.5</span></div>
+    <div><b>sgcFSearch</b><span>User Guide, version 1.0.6</span></div>
   </div>
   <details class="toc" id="toc" open>
     <summary>Contents</summary>
@@ -286,7 +286,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
   <h1>sgcFSearch</h1>
   <p class="subtitle">User Guide</p>
   <div class="rule" aria-hidden="true"></div>
-  <p class="meta">Version 1.0.5<br>2026-11-10<br>eSeGeCe, <a href="https://www.esegece.com">https://www.esegece.com</a><br>Copyright &copy; 2026 eSeGeCe</p>
+  <p class="meta">Version 1.0.6<br>2026-11-11<br>eSeGeCe, <a href="https://www.esegece.com">https://www.esegece.com</a><br>Copyright &copy; 2026 eSeGeCe</p>
 </header>
 
 <nav class="print-toc" aria-label="Contents">
@@ -557,6 +557,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <tr><td>File or folder name match</td><td>Icon and name, matched part highlighted</td><td>Parent folder on the left, size and modified date on the right (no size for folders)</td></tr>
 <tr><td>Content match</td><td>Icon, file name and its folder</td><td><code>line N: </code> followed by the matching line, with the match highlighted. Long lines are cut so the match stays visible.</td></tr>
 </table></div>
+<p>A name or folder that does not fit in its row ends with an ellipsis. Rest the mouse on the row to see the full name and the full folder in a tooltip. A folder wider than the screen wraps onto several lines. You can also make the bar wider, see <a href="#bar-move">Moving and pinning</a>.</p>
 <p>The status line shows, from left to right:</p>
 <ul>
   <li><i>No file name matches, showing matches inside files</i>, when the <a href="#c-fallback">content fallback</a> produced the results,</li>
@@ -581,13 +582,16 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <div class="tbl"><table>
 <tr><th>Mouse</th><th>Action</th></tr>
 <tr><td>Double-click a row</td><td>Open the item</td></tr>
+<tr><td>Drag a row</td><td>Drag the file or folder to another application, for example an Explorer folder, the desktop or an email. See <a href="#bar-drag">Dragging results</a>.</td></tr>
 <tr><td>Right-click a row</td><td>Menu with <b>Open</b> (<kbd>Enter</kbd>), <b>Show in folder</b> (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>), <b>Copy file</b> (<kbd>Ctrl</kbd>+<kbd>C</kbd>) and <b>Copy path</b> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>)</td></tr>
 <tr><td>Click a chip</td><td>Open the chip menu. On an active chip, a click on the <b>&#215;</b> at its right end removes the filter.</td></tr>
 <tr><td>Drag the empty area</td><td>Move the bar. See <a href="#bar-move">Moving and pinning</a>.</td></tr>
-<tr><td>Double-click the empty area</td><td>Forget the saved position and center the bar</td></tr>
+<tr><td>Drag the left or right edge</td><td>Change the width</td></tr>
+<tr><td>Double-click the empty area</td><td>Forget the saved position and width, and center the bar at the default width</td></tr>
 <tr><td>Click the pin</td><td>Turn <b>Keep open</b> on or off</td></tr>
 </table></div>
-<p>Open, Show in folder and Copy file feed the <a href="#r-frecency">frecency ranking</a>. Copy path does not.</p>
+<p>Open, Show in folder, Copy file and a drag that ends in a drop feed the <a href="#r-frecency">frecency ranking</a>. Copy path does not.</p>
+<p id="bar-drag"><b>Dragging results.</b> Press the left mouse button on a row and move the mouse to drag its file or folder out of the bar. Drop it anywhere that accepts files: an Explorer folder, the desktop, an email or an editor. The drop works like a drag from Explorer. A file dropped on another drive is copied and one dropped on the same drive is moved, <kbd>Ctrl</kbd> forces a copy, <kbd>Shift</kbd> a move and <kbd>Alt</kbd> creates a shortcut. The bar does not hide while you drag. When the drop leaves another window active, the bar hides as it does when it loses the focus, unless the pin is on.</p>
 
 <h3 id="bar-chips">Filter chips</h3>
 <p>The chips are a mouse friendly way to write filters. Each chip reads and writes one filter in the search box, so a filter you type by hand also lights up its chip. Choosing an option replaces the current value of that filter. <b>Remove filter</b>, at the bottom of the menu of an active chip, deletes it.</p>
@@ -609,7 +613,8 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 <p>With an empty search box, press <kbd>Up</kbd> to recall the most recent search, and keep pressing <kbd>Up</kbd> for older ones. <kbd>Down</kbd> goes back toward the newest one and finally to an empty box. As soon as you edit the recalled text, the arrow keys move the selection again.</p>
 
 <h3 id="bar-move">Moving and pinning</h3>
-<p>Drag the bar by its empty area, that is the outer margins, the space between the chips and the status text, to move it. The position is remembered for each monitor layout, so docking and undocking a laptop gives each layout its own place. A position that is no longer on screen is ignored. When the results would take the bar past the bottom of the work area, it is shifted up for display and the remembered position does not change. Double-click the empty area to forget the position for the current monitor layout and center the bar again.</p>
+<p>Drag the bar by its empty area, that is the outer margins, the space between the chips and the status text, to move it. The position is remembered for each monitor layout, so docking and undocking a laptop gives each layout its own place. A position that is no longer on screen is ignored. When the results would take the bar past the bottom of the work area, it is shifted up for display and the remembered position does not change. Double-click the empty area to forget the position and the width for the current monitor layout and center the bar again at the default width.</p>
+<p>Drag the left or right edge of the bar to change its width, for example to see long names and folders in full. The height still follows the results. The bar is never narrower than the search box and the filter chips need, and never wider than the work area of its monitor. The width is remembered for each monitor layout, like the position. Dragging the right edge of a centered bar keeps it centered the next time it opens. Dragging the left edge also moves the bar, so its position is remembered too.</p>
 <p>The pin button at the right end of the search box is the <b>Keep open</b> toggle. When it is on:</p>
 <ul>
   <li>the bar does not hide when it loses the focus, and it no longer stays on top of other windows,</li>
@@ -618,7 +623,7 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
   <li>the hotkey and the tray icon bring the bar to the front with the focus in the search box, or hide it when it is already the active window,</li>
   <li>the results keep refreshing while the bar is in the background.</li>
 </ul>
-<p>The pin state and the positions are saved in <code>bar.json</code> in the data folder and are kept across restarts and updates.</p>
+<p>The pin state, the positions and the widths are saved in <code>bar.json</code> in the data folder and are kept across restarts and updates.</p>
 
 <h3 id="bar-folder">Folder picker</h3>
 <p>Two ways lead to the standard Windows folder dialog:</p>
@@ -862,7 +867,7 @@ System Volume Information  .next  .nuxt  .angular  .parcel-cache  .dart_tool
 <div class="tbl"><table>
 <tr><th>Action</th><th>Weight</th></tr>
 <tr><td>Open (<kbd>Enter</kbd>, double-click, Open menu), Show in folder, a pipe <code>use</code> request with <code>"kind":"open"</code></td><td>1.0</td></tr>
-<tr><td>Copy file (<kbd>Ctrl</kbd>+<kbd>C</kbd>), a pipe <code>use</code> request with <code>"kind":"copy"</code></td><td>0.7</td></tr>
+<tr><td>Copy file (<kbd>Ctrl</kbd>+<kbd>C</kbd>), a row dragged and dropped, a pipe <code>use</code> request with <code>"kind":"copy"</code></td><td>0.7</td></tr>
 </table></div>
 <p>The usage bonus is <code>10 x ln(1 + sum of the decayed weights)</code>, capped at 60. A file used often and recently gets a large bonus, one used long ago fades out. Up to 4,000 paths are remembered, the lowest scores are dropped first. Copy path does not count as a use.</p>
 <p>See <a href="#q-sort">Sort values</a> for the other orders.</p>
@@ -913,7 +918,7 @@ System Volume Information  .next  .nuxt  .angular  .parcel-cache  .dart_tool
 <tr><td><code>usage.json</code></td><td>Open and copy history for the frecency ranking (up to 4,000 paths)</td></tr>
 <tr><td><code>history.json</code></td><td>The last 50 searches of the search bar</td></tr>
 <tr><td><code>saved_filters.json</code></td><td>The saved filters of the Saved chip, the name and the query of each one</td></tr>
-<tr><td><code>bar.json</code></td><td>Search bar pin state and one position per monitor layout</td></tr>
+<tr><td><code>bar.json</code></td><td>Search bar pin state, one position and width per monitor layout</td></tr>
 <tr><td><code>daemon.log</code></td><td>The log. At 2 MB it is renamed to <code>daemon.log.old</code> and a new one starts.</td></tr>
 </table></div>
 
@@ -999,7 +1004,7 @@ sgcfs stop</code></pre>
 sgcfs 'package.json !node_modules\ | ForEach-Object { Split-Path $_ }</code></pre>
 <p><code>sgcfs status</code> prints one value per line (example values):</p>
 <pre><code>state            ready
-version          1.0.5
+version          1.0.6
 pid              12345
 files            3,404,349
 folders          447,577
@@ -1062,7 +1067,7 @@ log              C:\Users\you\AppData\Local\sgcFSearch\daemon.log</code></pre>
 <h4>Status</h4>
 <pre><code>{"id":3,"status":true}</code></pre>
 <pre><code>{"id":3,"ok":true,"state":"ready","files":5080000,"folders":610000,"crawled":123456,
- "content_pending":42,"content_indexed":36000,"pid":1234,"version":"1.0.5",
+ "content_pending":42,"content_indexed":36000,"pid":1234,"version":"1.0.6",
  "roots":["C:\\","D:\\"],"log":"C:\\Users\\you\\AppData\\Local\\sgcFSearch\\daemon.log"}</code></pre>
 <p><code>state</code> is one of <code>starting</code>, <code>loading</code>, <code>crawling</code>, <code>catchup</code>, <code>ready</code>, <code>stopping</code>, <code>stopped</code> (see <a href="#start-states">Index states</a>). <code>roots</code> lists the indexed drives.</p>
 
@@ -1261,6 +1266,12 @@ app: hotkey Win+Shift+F active</code></pre>
 <!-- ============================================================ 15 -->
 <section class="chapter" id="history">
 <h2><span class="num">15</span>Version history</h2>
+<h3 id="v106">1.0.6, November 2026</h3>
+<ul>
+  <li>Search bar: drag its left or right edge to change the width. The width is remembered for each monitor layout, and a double click on the empty area also resets it.</li>
+  <li>Search bar: a row whose name or folder does not fit shows the full name and folder in a tooltip.</li>
+  <li>Search bar: drag a row to an Explorer folder, the desktop, an email or any other place that accepts files. The drop follows the usual Explorer rules for copy, move and shortcut.</li>
+</ul>
 <h3 id="v105">1.0.5, November 2026</h3>
 <ul>
   <li>Sort by directory: <code>sort:dir</code> and a Directory entry in the Sort chip order the results by folder path, then by name.</li>
@@ -1306,7 +1317,7 @@ app: hotkey Win+Shift+F active</code></pre>
   <li>Single instance: a second start shows the search bar of the running instance.</li>
   <li>Distributed as a signed per user installer (recommended) and as a zip. The setup offers the PATH entry and Start at login as tasks; with the zip, <code>sgcfs install</code> adds them.</li>
 </ul>
-<p class="footer">sgcFSearch 1.0.5. Copyright &copy; 2026 eSeGeCe. <a href="https://www.esegece.com">https://www.esegece.com</a></p>
+<p class="footer">sgcFSearch 1.0.6. Copyright &copy; 2026 eSeGeCe. <a href="https://www.esegece.com">https://www.esegece.com</a></p>
 </section>
 
 </main>

@@ -21,13 +21,20 @@ unit sgcFSearch_FormBar;
   the control stores no strings, rows are painted from the result array).
   - NotifyIndexChanged (main thread) re-runs the visible query, throttled to
   one run per 250 ms, ignored while hidden. No timer runs while hidden.
-  - Dragging the empty area moves the bar, a double click there centers it
-  again. bar.json keeps one position per monitor layout and the pin state. }
+  - Dragging the empty area moves the bar, dragging its left or right edge
+  changes the width, a double click on the empty area centers it again at the
+  default width. bar.json keeps one position and one width per monitor layout
+  and the pin state.
+  - A row whose name or folder is cut off shows both in full as a hint.
+  - Dragging a row with the left button starts a shell drag of its file or
+  folder with the data object of the shell, so the drop behaves like a drag
+  from Explorer. }
 
 interface
 
 uses
   Winapi.Windows, Winapi.Messages, Winapi.ShellAPI, Winapi.CommCtrl,
+  Winapi.ActiveX, Winapi.ShlObj,
   System.SysUtils, System.Classes, System.Types, System.Math,
   System.SyncObjs, System.JSON, System.IOUtils, System.Generics.Collections,
   System.Generics.Defaults,
@@ -109,6 +116,14 @@ type
     FMoveStart: TPoint;
     FLostFocusTick: UInt64;
     FPositions: TDictionary<string, TPoint>;
+    FWidths: TDictionary<string, Integer>;
+    FSizing: Boolean;
+    FMoveStartWidth: Integer;
+    FRowCut: TArray<Boolean>;
+    FListWndProc: TWndMethod;
+    FDragRow: Integer;
+    FDragStart: TPoint;
+    FDragging: Boolean;
     FStateFileName: string;
     procedure SetEngine(const Value: TsgcFSearchEngine);
     procedure SetHistoryFileName(const Value: string);
@@ -121,6 +136,12 @@ type
       message WM_NCLBUTTONDBLCLK;
     procedure WMEnterSizeMove(var Message: TMessage); message WM_ENTERSIZEMOVE;
     procedure WMExitSizeMove(var Message: TMessage); message WM_EXITSIZEMOVE;
+    procedure WMSizing(var Message: TMessage); message WM_SIZING;
+    procedure WMGetMinMaxInfo(var Message: TWMGetMinMaxInfo);
+      message WM_GETMINMAXINFO;
+    procedure DoListWndProc(var Message: TMessage);
+    procedure DoListHint(var Message: TCMHintShow);
+    function DoDragRow: Boolean;
     procedure DoDeliver(Seq: Int64; const Rows: TsgcFSearchEngineRows;
       const Error, Warning: string; Fallback: Boolean);
     procedure DoStartSearch(Keep: Boolean);
@@ -167,10 +188,13 @@ type
   protected
     procedure CreateParams(var Params: TCreateParams); override;
     procedure CreateWnd; override;
+    procedure Resize; override;
     /// Folder picker (TFileOpenDialog, fdoPickFolders); '' = cancelled.
     function DoPickFolder(const Initial: string): string; virtual;
     /// Asks the name of a saved filter; False = cancelled.
     function DoInputSavedName(var Name: string): Boolean; virtual;
+    /// Shell drag of a result row (SHDoDragDrop); returns the drop effect.
+    function DoShellDrag(const DataObject: IDataObject): Integer; virtual;
     /// Writes Value into the query text for a chip ('' removes the filter).
     procedure DoApplyChip(Kind: TsgcFSearchBarChip; const Value: string);
     function DoChipCaption(Kind: TsgcFSearchBarChip;
@@ -244,6 +268,8 @@ implementation
 
 const
   CS_BAR_WIDTH = 760;
+  // the search box, the pin and the six chips with their default captions
+  CS_BAR_MIN_WIDTH = 480;
   CS_BAR_ROWS = 9;
   CS_ROW_HEIGHT = 46;
   CS_BAR_LIMIT = 300;
@@ -581,6 +607,104 @@ begin
   end;
 end;
 
+// Breaks S into lines no wider than aMaxW on C, after a path separator or a
+// space where there is one: the hint window only breaks lines at spaces.
+function sgcBarWrapText(C: TCanvas; const S: string; aMaxW: Integer): string;
+var
+  vRest: string;
+  vFit, i: Integer;
+  vSize: TSize;
+begin
+  Result := '';
+  vRest := S;
+  while vRest <> '' do
+  begin
+    vFit := 0;
+    if not GetTextExtentExPoint(C.Handle, PChar(vRest), Length(vRest), aMaxW,
+      @vFit, nil, vSize) or (vFit >= Length(vRest)) then
+      Break;
+    vFit := Max(1, vFit);
+    i := vFit;
+    while (i > 0) and not CharInSet(vRest[i], ['\', ' ']) do
+      Dec(i);
+    if i > 0 then
+      vFit := i
+    else if (vRest[vFit] >= #$D800) and (vRest[vFit] <= #$DBFF) then
+      Inc(vFit);
+    Result := Result + Copy(vRest, 1, vFit) + sLineBreak;
+    Delete(vRest, 1, vFit);
+  end;
+  Result := Result + vRest;
+end;
+
+// The shell data object of a file or folder, the one a drag from Explorer
+// carries; nil when the path is gone or the shell cannot parse it.
+function sgcBarDataObject(Wnd: hwnd; const Path: string): IDataObject;
+var
+  vPidl, vChild: PItemIDList;
+  vAttr: DWORD;
+  vParent: IShellFolder;
+  vObj: Pointer;
+begin
+  Result := nil;
+  if (Path = '') or not(FileExists(Path) or DirectoryExists(Path)) then
+    Exit;
+  vPidl := nil;
+  vAttr := 0;
+  if Failed(SHParseDisplayName(PChar(Path), nil, vPidl, 0, vAttr)) or
+    (vPidl = nil) then
+    Exit;
+  try
+    vChild := nil;
+    if Failed(SHBindToParent(vPidl, IShellFolder, Pointer(vParent), vChild)) or
+      (vParent = nil) then
+      Exit;
+    vObj := nil;
+    if Succeeded(vParent.GetUIObjectOf(Wnd, 1, vChild, IDataObject, nil, vObj))
+    then
+      Pointer(Result) := vObj;
+  finally
+    CoTaskMemFree(vPidl);
+  end;
+end;
+
+// The effect of a drop. An optimized move (the target moves the file itself,
+// for example on the same drive) returns no effect to the source, the target
+// writes the real one into the data object.
+function sgcBarDropEffect(const DataObject: IDataObject;
+Effect: Integer): Integer;
+var
+  vFmt: TFormatEtc;
+  vMed: TStgMedium;
+  vP: PDWORD;
+begin
+  Result := Effect;
+  if (Result <> DROPEFFECT_NONE) or (DataObject = nil) then
+    Exit;
+  vFmt.cfFormat := TClipFormat
+    (RegisterClipboardFormat('Logical Performed DropEffect'));
+  vFmt.ptd := nil;
+  vFmt.dwAspect := DVASPECT_CONTENT;
+  vFmt.lindex := -1;
+  vFmt.tymed := TYMED_HGLOBAL;
+  FillChar(vMed, SizeOf(vMed), 0);
+  if Failed(DataObject.GetData(vFmt, vMed)) then
+    Exit;
+  try
+    if vMed.tymed = TYMED_HGLOBAL then
+    begin
+      vP := GlobalLock(vMed.hGlobal);
+      if vP <> nil then
+      begin
+        Result := Integer(vP^);
+        GlobalUnlock(vMed.hGlobal);
+      end;
+    end;
+  finally
+    ReleaseStgMedium(vMed);
+  end;
+end;
+
 { TsgcFSearchBarForm }
 
 procedure TsgcFSearchBarForm.CreateParams(var Params: TCreateParams);
@@ -589,7 +713,9 @@ begin
   Params.ExStyle := Params.ExStyle or WS_EX_TOOLWINDOW;
   if not FPinned then
     Params.ExStyle := Params.ExStyle or WS_EX_TOPMOST;
-  Params.WindowClass.style := Params.WindowClass.style or CS_DROPSHADOW;
+  // repaint all on a width change, else the old box outline stays on screen
+  Params.WindowClass.style := Params.WindowClass.style or CS_DROPSHADOW or
+    CS_HREDRAW;
 end;
 
 procedure TsgcFSearchBarForm.CreateWnd;
@@ -629,6 +755,7 @@ begin
   FHistoryFileName := IncludeTrailingPathDelimiter(sgcFSearchDataDir) +
     'history.json';
   FPositions := TDictionary<string, TPoint>.Create;
+  FWidths := TDictionary<string, Integer>.Create;
   FStateFileName := IncludeTrailingPathDelimiter(sgcFSearchDataDir) +
     CS_STATE_FILE;
   DoLoadBarState;
@@ -639,6 +766,11 @@ begin
   AddRowItem('Copy file', 3, Vcl.Menus.ShortCut(Ord('C'), [ssCtrl]));
   AddRowItem('Copy path', 4, Vcl.Menus.ShortCut(Ord('C'), [ssCtrl, ssShift]));
   OnAfterMonitorDpiChanged := DoDpiChanged;
+  // a row cut off shows its full name and folder as a hint
+  lstResults.ShowHint := True;
+  FListWndProc := lstResults.WindowProc;
+  lstResults.WindowProc := DoListWndProc;
+  FDragRow := -1;
   DoApplyTheme(False);
   DoLayout;
 end;
@@ -652,6 +784,8 @@ begin
   FreeAndNil(FIcons);
   FreeAndNil(FHistory);
   FreeAndNil(FPositions);
+  FreeAndNil(FWidths);
+  lstResults.WindowProc := FListWndProc;
 end;
 
 procedure TsgcFSearchBarForm.SetEngine(const Value: TsgcFSearchEngine);
@@ -680,7 +814,7 @@ procedure TsgcFSearchBarForm.WMActivate(var Message: TWMActivate);
 begin
   inherited;
   if (Message.Active = WA_INACTIVE) and FShown and not FDialogOpen and
-    not FMenuOpen and HandleAllocated then
+    not FMenuOpen and not FDragging and HandleAllocated then
   begin
     FLostFocusTick := GetTickCount64;
     PostMessage(Handle, WM_SGCFS_BAR_DEACTIVATE, 0, 0);
@@ -691,7 +825,7 @@ procedure TsgcFSearchBarForm.WMBarDeactivate(var Message: TMessage);
 var
   vFg: hwnd;
 begin
-  if (not FShown) or FPinned or FDialogOpen or FMenuOpen then
+  if (not FShown) or FPinned or FDialogOpen or FMenuOpen or FDragging then
     Exit;
   vFg := GetForegroundWindow;
   if (vFg = Handle) or ((vFg <> 0) and (GetWindow(vFg, GW_OWNER) = Handle)) then
@@ -718,10 +852,21 @@ begin
 end;
 
 procedure TsgcFSearchBarForm.WMNCHitTest(var Message: TWMNCHitTest);
+var
+  vP: TPoint;
+  vEdge: Integer;
 begin
   inherited;
-  if (Message.Result = HTCLIENT) and
-    DoIsDragPoint(ScreenToClient(Point(Message.XPos, Message.YPos))) then
+  if Message.Result <> HTCLIENT then
+    Exit;
+  vP := ScreenToClient(Point(Message.XPos, Message.YPos));
+  // the side edges change the width, the height follows the results
+  vEdge := ScaleValue(6);
+  if vP.X < vEdge then
+    Message.Result := HTLEFT
+  else if vP.X >= ClientWidth - vEdge then
+    Message.Result := HTRIGHT
+  else if DoIsDragPoint(vP) then
     Message.Result := HTCAPTION;
 end;
 
@@ -740,22 +885,72 @@ procedure TsgcFSearchBarForm.WMEnterSizeMove(var Message: TMessage);
 begin
   inherited;
   FMoving := True;
+  FSizing := False;
   FMoveStart := BoundsRect.TopLeft;
+  FMoveStartWidth := Width;
 end;
 
 procedure TsgcFSearchBarForm.WMExitSizeMove(var Message: TMessage);
+var
+  vSave: Boolean;
 begin
   inherited;
   FMoving := False;
+  vSave := False;
+  // the width is kept at 96 DPI, only after an edge drag: a move to a monitor
+  // with another DPI scales it too
+  if FSizing and (Width <> FMoveStartWidth) then
+  begin
+    FWidths.AddOrSetValue(sgcBarLayoutKey, MulDiv(Width, 96, CurrentPPI));
+    vSave := True;
+  end;
+  FSizing := False;
   // a plain click on the empty area runs the move loop too, only a real drag
-  // saves, so a bar shifted up for display keeps its saved place
-  if (Left = FMoveStart.X) and (Top = FMoveStart.Y) then
+  // saves, so a bar shifted up for display keeps its saved place. A drag of
+  // the right edge keeps a centered bar centered.
+  if (Left <> FMoveStart.X) or (Top <> FMoveStart.Y) then
+  begin
+    FSavedPos := BoundsRect.TopLeft;
+    FAtSaved := True;
+    FPositions.AddOrSetValue(sgcBarLayoutKey, FSavedPos);
+    vSave := True;
+  end;
+  if not vSave then
     Exit;
-  FSavedPos := BoundsRect.TopLeft;
-  FAtSaved := True;
-  FPositions.AddOrSetValue(sgcBarLayoutKey, FSavedPos);
   DoSaveBarState;
-  DoFitSaved(ClientHeight);
+  if FAtSaved then
+    DoFitSaved(ClientHeight);
+end;
+
+procedure TsgcFSearchBarForm.WMSizing(var Message: TMessage);
+begin
+  inherited;
+  FSizing := True;
+end;
+
+procedure TsgcFSearchBarForm.WMGetMinMaxInfo(var Message: TWMGetMinMaxInfo);
+var
+  vMon: Vcl.Forms.TMonitor;
+  vWA: TRect;
+begin
+  inherited;
+  vMon := Screen.MonitorFromWindow(Handle, mdNearest);
+  if vMon <> nil then
+    vWA := vMon.WorkareaRect
+  else
+    vWA := Screen.WorkareaRect;
+  Message.MinMaxInfo.ptMinTrackSize.X := ScaleValue(CS_BAR_MIN_WIDTH);
+  Message.MinMaxInfo.ptMaxTrackSize.X := Max(ScaleValue(CS_BAR_MIN_WIDTH),
+    vWA.Width);
+end;
+
+// While an edge is dragged the layout follows the width; every other size
+// change lays the bar out itself.
+procedure TsgcFSearchBarForm.Resize;
+begin
+  inherited;
+  if FMoving then
+    DoLayout;
 end;
 
 // Only the form sees points over the paint boxes, they have no window handle.
@@ -822,7 +1017,7 @@ end;
 
 procedure TsgcFSearchBarForm.DoLayout;
 var
-  vM, vW, vY, vBoxH, vEH, vIH, vRows, vPin: Integer;
+  vM, vW, vY, vBoxH, vEH, vIH, vRows, vPin, vOldW: Integer;
 begin
   vW := ClientWidth;
   vM := ScaleValue(10);
@@ -848,7 +1043,11 @@ begin
   vRows := Min(Length(FRows), CS_BAR_ROWS);
   if vRows > 0 then
   begin
+    vOldW := lstResults.Width;
     lstResults.SetBounds(vM, vY, vW - 2 * vM, vRows * vIH);
+    // the rows are painted for the width, a list box does not repaint them
+    if (lstResults.Width <> vOldW) and lstResults.HandleAllocated then
+      lstResults.Invalidate;
     lstResults.Visible := True;
     vY := lstResults.Top + lstResults.Height + ScaleValue(4);
   end
@@ -894,7 +1093,7 @@ end;
 procedure TsgcFSearchBarForm.DoPlace(aMonitor: Vcl.Forms.TMonitor);
 var
   vWA: TRect;
-  vW: Integer;
+  vW, vLogical: Integer;
   vSaved: Vcl.Forms.TMonitor;
 begin
   // a saved position wins while it is still on a monitor
@@ -913,7 +1112,11 @@ begin
   end
   else
     vWA := Screen.WorkareaRect;
-  vW := Min(ScaleValue(CS_BAR_WIDTH), vWA.Width - ScaleValue(32));
+  // a width saved for the layout is at 96 DPI, scaled for this monitor
+  if not FWidths.TryGetValue(sgcBarLayoutKey, vLogical) then
+    vLogical := CS_BAR_WIDTH;
+  vW := Min(ScaleValue(Max(vLogical, CS_BAR_MIN_WIDTH)),
+    vWA.Width - ScaleValue(32));
   if FAtSaved then
     SetBounds(FSavedPos.X, FSavedPos.Y, vW, Height)
   else
@@ -934,6 +1137,7 @@ end;
 procedure TsgcFSearchBarForm.DoResetPosition;
 begin
   FPositions.Remove(sgcBarLayoutKey);
+  FWidths.Remove(sgcBarLayoutKey);
   DoSaveBarState;
   DoPlaceAtCursor;
 end;
@@ -1011,6 +1215,7 @@ end;
 
 procedure TsgcFSearchBarForm.HideBar;
 begin
+  Application.CancelHint;
   tmrRefresh.Enabled := False;
   tmrStatus.Enabled := False;
   if Trim(edtSearch.Text) <> '' then
@@ -1098,6 +1303,8 @@ end;
 procedure TsgcFSearchBarForm.DoClearRows;
 begin
   FRows := nil;
+  FRowCut := nil;
+  Application.CancelHint;
   FTotal := 0;
   FElapsed := 0;
   FError := '';
@@ -1182,6 +1389,9 @@ begin
     if (vOldTop >= 0) and (vOldTop < vOldCount) then
       vTopPath := FRows[vOldTop].Path;
   end;
+  // new rows: the cut flags and a hint shown for the old rows are stale
+  FRowCut := nil;
+  Application.CancelHint;
   FRows := Rows.Items;
   FTotal := Rows.Total;
   FElapsed := Rows.ElapsedMs;
@@ -1335,6 +1545,7 @@ begin
   // the setting is in text lines and a row is about three of them; anything
   // above a page, WHEEL_PAGESCROLL included, scrolls one page
   vRows := EnsureRange(Int64(vLines div 3), 1, CS_BAR_ROWS);
+  Application.CancelHint;
   lstResults.TopIndex := EnsureRange(lstResults.TopIndex - vNotches * vRows, 0,
     Max(0, lstResults.Count - CS_BAR_ROWS));
 end;
@@ -1377,7 +1588,7 @@ end;
 procedure TsgcFSearchBarForm.DoCopyFile;
 var
   vRow: TsgcFSearchEngineRow;
-  vDrop, vEffect: HGLOBAL;
+  vDrop, vEffect: hGlobal;
   vP: PByte;
 begin
   if not DoSelRow(vRow) then
@@ -1621,6 +1832,12 @@ begin
               (Abs(vX) <= CS_POS_LIMIT) and (Abs(vY) <= CS_POS_LIMIT) then
               FPositions.AddOrSetValue(vPair.JsonString.Value, Point(vX, vY));
           end;
+      vAll := TJSONObject(vV).GetValue('widths');
+      if vAll is TJSONObject then
+        for vPair in TJSONObject(vAll) do
+          if vPair.JsonValue.TryGetValue<Integer>(vX) and
+            (vX >= CS_BAR_MIN_WIDTH) and (vX <= CS_POS_LIMIT) then
+            FWidths.AddOrSetValue(vPair.JsonString.Value, vX);
     finally
       vV.Free;
     end;
@@ -1628,6 +1845,7 @@ begin
     // an unreadable file means defaults
     FPinned := False;
     FPositions.Clear;
+    FWidths.Clear;
   end;
 end;
 
@@ -1635,6 +1853,7 @@ procedure TsgcFSearchBarForm.DoSaveBarState;
 var
   vObj, vAll, vEntry: TJSONObject;
   vPair: TPair<string, TPoint>;
+  vWidth: TPair<string, Integer>;
   vTmp: string;
 begin
   if FStateFileName = '' then
@@ -1652,6 +1871,10 @@ begin
         vEntry.AddPair('top', TJSONNumber.Create(vPair.Value.Y));
         vAll.AddPair(vPair.Key, vEntry);
       end;
+      vAll := TJSONObject.Create;
+      vObj.AddPair('widths', vAll);
+      for vWidth in FWidths do
+        vAll.AddPair(vWidth.Key, TJSONNumber.Create(vWidth.Value));
       ForceDirectories(ExtractFileDir(FStateFileName));
       vTmp := FStateFileName + '.tmp';
       TFile.WriteAllBytes(vTmp, TEncoding.UTF8.GetBytes(vObj.Format(2)));
@@ -2383,6 +2606,7 @@ begin
   FIcons.AddOrSetValue(vKey, Result);
 end;
 
+// Returns the right end of the text, past R.Right when it was cut off.
 function TsgcFSearchBarForm.DoDrawSpans(C: TCanvas; const R: TRect;
 const S: string; HPos, HLen: Integer; Normal, Hl: TColor): Integer;
 var
@@ -2406,8 +2630,14 @@ begin
   vX := R.Left;
   for i := 0 to 2 do
   begin
-    if (vParts[i] = '') or (vX >= R.Right) then
+    if vParts[i] = '' then
       Continue;
+    // no room left for this part: the text is cut
+    if vX >= R.Right then
+    begin
+      vX := R.Right + 1;
+      Break;
+    end;
     if i = 1 then
     begin
       C.Font.style := [fsBold];
@@ -2425,7 +2655,7 @@ begin
     Inc(vX, vW);
   end;
   C.Font.style := [];
-  Result := Min(vX, R.Right);
+  Result := vX;
 end;
 
 procedure TsgcFSearchBarForm.lstResultsData(Control: TWinControl;
@@ -2446,6 +2676,7 @@ var
   vR1, vR2, vRr: TRect;
   vS, vPre: string;
   vIml: HIMAGELIST;
+  vClip: Boolean;
 begin
   C := lstResults.Canvas;
   C.Brush.style := bsSolid;
@@ -2485,6 +2716,7 @@ begin
   C.Font.Height := -ScaleValue(14);
   vEnd := DoDrawSpans(C, vR1, vRow.Name, vRow.MatchPos, vRow.MatchLen,
     FPal.Text, FPal.Accent);
+  vClip := vEnd > vR1.Right;
   C.Font.Height := -ScaleValue(12);
   C.Font.style := [];
   C.Font.Color := FPal.Dim;
@@ -2497,6 +2729,8 @@ begin
     if vRr.Left < vRr.Right then
       DrawText(C.Handle, PChar(vS), Length(vS), vRr, DT_SINGLELINE or
         DT_VCENTER or DT_NOPREFIX or DT_PATH_ELLIPSIS);
+    vClip := vClip or ((vS <> '') and ((vRr.Left >= vRr.Right) or
+      (C.TextWidth(vS) > vRr.Width)));
     vS := StringReplace(vRow.LineText, #9, ' ', [rfReplaceAll]);
     vS := StringReplace(vS, #13, ' ', [rfReplaceAll]);
     vS := StringReplace(vS, #10, ' ', [rfReplaceAll]);
@@ -2544,7 +2778,13 @@ begin
     if vRr.Right > vRr.Left then
       DrawText(C.Handle, PChar(vS), Length(vS), vRr, DT_SINGLELINE or
         DT_VCENTER or DT_NOPREFIX or DT_PATH_ELLIPSIS);
+    vClip := vClip or ((vS <> '') and ((vRr.Right <= vRr.Left) or
+      (C.TextWidth(vS) > vRr.Width)));
   end;
+  // read by the hint, for the width the row was painted at
+  if Length(FRowCut) <> Length(FRows) then
+    SetLength(FRowCut, Length(FRows));
+  FRowCut[Index] := vClip;
   C.Brush.style := bsSolid;
   // the list draws an XOR focus rect after this handler: cancel it
   if odFocused in State then
@@ -2579,6 +2819,141 @@ begin
   end;
   if FShown and edtSearch.CanFocus then
     edtSearch.SetFocus;
+end;
+
+procedure TsgcFSearchBarForm.DoListWndProc(var Message: TMessage);
+var
+  i: Integer;
+begin
+  case Message.Msg of
+    CM_HINTSHOW:
+      begin
+        DoListHint(TCMHintShow(Message));
+        Exit;
+      end;
+    WM_LBUTTONDOWN:
+      begin
+        // the row under the button, read before the list box scrolls it into
+        // view; it is dragged once the mouse leaves the drag rectangle
+        i := lstResults.ItemAtPos(Point(TWMMouse(Message).XPos,
+          TWMMouse(Message).YPos), True);
+        FListWndProc(Message);
+        FDragRow := i;
+        FDragStart := Point(TWMMouse(Message).XPos, TWMMouse(Message).YPos);
+        Exit;
+      end;
+    WM_MOUSEMOVE:
+      if (FDragRow >= 0) and ((Message.WPARAM and MK_LBUTTON) <> 0) and
+        ((Abs(TWMMouse(Message).XPos - FDragStart.X) >
+        GetSystemMetrics(SM_CXDRAG)) or
+        (Abs(TWMMouse(Message).YPos - FDragStart.Y) >
+        GetSystemMetrics(SM_CYDRAG))) and DoDragRow then
+        Exit;
+    WM_LBUTTONUP, WM_CANCELMODE:
+      FDragRow := -1;
+    WM_CAPTURECHANGED:
+      if hwnd(Message.LParam) <> lstResults.Handle then
+        FDragRow := -1;
+  end;
+  FListWndProc(Message);
+end;
+
+// The left button moved past the drag rectangle on a row: a shell drag of its
+// file or folder, so the drop follows the usual Explorer rules for copy, move
+// and shortcut. False when the path cannot be dragged.
+function TsgcFSearchBarForm.DoDragRow: Boolean;
+var
+  vRow: TsgcFSearchEngineRow;
+  vData: IDataObject;
+  vMsg: TMessage;
+  vEffect, i: Integer;
+begin
+  Result := False;
+  i := FDragRow;
+  FDragRow := -1;
+  if (i < 0) or (i >= Length(FRows)) then
+    Exit;
+  vRow := FRows[i];
+  // a path that is gone or that the shell cannot parse: no drag
+  vData := sgcBarDataObject(Handle, vRow.Path);
+  if vData = nil then
+    Exit;
+  Result := True;
+  // finish the click on the dragged row as a button up would: the list box
+  // ends its tracking and releases the capture, the row stays selected and
+  // the focus goes back to the search box
+  lstResults.ItemIndex := i;
+  vMsg.Msg := WM_LBUTTONUP;
+  vMsg.WPARAM := 0;
+  vMsg.LParam := MakeLParam(Word(SmallInt(FDragStart.X)),
+    Word(SmallInt(FDragStart.Y)));
+  vMsg.Result := 0;
+  FListWndProc(vMsg);
+  if GetCapture = lstResults.Handle then
+    ReleaseCapture;
+  Application.CancelHint;
+  FDragging := True;
+  try
+    vEffect := sgcBarDropEffect(vData, DoShellDrag(vData));
+  finally
+    FDragging := False;
+  end;
+  if vEffect <> DROPEFFECT_NONE then
+  begin
+    if FEngine <> nil then
+      FEngine.RecordUse(vRow.Path, fsukCopy);
+    DoAddHistory(edtSearch.Text);
+  end;
+  // the bar lost the activation during the drag: the usual rule decides
+  // whether it hides (a pinned bar stays)
+  if FShown and HandleAllocated and (GetForegroundWindow <> Handle) then
+    PostMessage(Handle, WM_SGCFS_BAR_DEACTIVATE, 0, 0);
+end;
+
+function TsgcFSearchBarForm.DoShellDrag(const DataObject: IDataObject): Integer;
+var
+  vEffect: DWORD;
+  vHr: HRESULT;
+begin
+  // SHDoDragDrop gives the drop source and the drag image of the shell
+  vEffect := DROPEFFECT_NONE;
+  vHr := SHDoDragDrop(Handle, DataObject, nil, DROPEFFECT_COPY or
+    DROPEFFECT_MOVE or DROPEFFECT_LINK, vEffect);
+  if Failed(vHr) or (vHr = DRAGDROP_S_CANCEL) then
+    Result := DROPEFFECT_NONE
+  else
+    Result := Integer(vEffect);
+end;
+
+// A row cut off when it was painted shows its full name and folder; the hint
+// covers the row only, so the next row gets its own.
+procedure TsgcFSearchBarForm.DoListHint(var Message: TCMHintShow);
+var
+  vInfo: Vcl.Controls.PHintInfo;
+  vBmp: Vcl.Graphics.TBitmap;
+  i, vMaxW: Integer;
+begin
+  Message.Result := 1;
+  vInfo := Message.HintInfo;
+  i := lstResults.ItemAtPos(vInfo.CursorPos, True);
+  if (i < 0) or (i >= Length(FRows)) or (i >= Length(FRowCut)) or not FRowCut[i]
+  then
+    Exit;
+  // a path wider than the list breaks at its separators, measured with the
+  // font of the hint window
+  vMaxW := Max(ScaleValue(200), lstResults.Width);
+  vBmp := Vcl.Graphics.TBitmap.Create;
+  try
+    vBmp.Canvas.Font := Screen.HintFont;
+    vBmp.Canvas.Font.ChangeScale(CurrentPPI, Screen.PixelsPerInch, True);
+    vInfo.HintStr := sgcBarWrapText(vBmp.Canvas, FRows[i].Name, vMaxW) +
+      sLineBreak + sgcBarWrapText(vBmp.Canvas,
+      ExtractFileDir(FRows[i].Path), vMaxW);
+  finally
+    vBmp.Free;
+  end;
+  vInfo.CursorRect := lstResults.ItemRect(i);
+  Message.Result := 0;
 end;
 
 initialization

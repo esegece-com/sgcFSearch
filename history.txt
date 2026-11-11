@@ -12,6 +12,12 @@
 Versions
 --------
 
+1.0.6: 2026 November
+
+ [+] Search bar: drag its left or right edge to change the width. The width is remembered for each monitor layout, and a double click on the empty area also resets it.
+ [+] Search bar: a row whose name or folder does not fit shows the full name and folder in a tooltip.
+ [+] Search bar: drag a row to an Explorer folder, the desktop, an email or any other place that accepts files. The drop follows the usual Explorer rules for copy, move and shortcut.
+
 1.0.5: 2026 November
 
  [+] Sort by directory: sort:dir and a Directory entry in the Sort chip order the results by folder path, then by name.

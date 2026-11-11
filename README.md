@@ -88,7 +88,7 @@ Choosing a saved filter writes it into the search box and runs the search. The w
 
 ## Moving and pinning the bar
 
-Drag the bar by its empty area (the margins, the space between the chips, the status text) to move it. The position is remembered for each monitor layout, so docking and undocking a laptop gives each layout its own place. Double click the empty area to forget the position for the current layout and center the bar again.
+Drag the bar by its empty area (the margins, the space between the chips, the status text) to move it, and drag its left or right edge to change the width. The position and the width are remembered for each monitor layout, so docking and undocking a laptop gives each layout its own place. Double click the empty area to forget the position and the width for the current layout and center the bar again at the default width. When a name or a folder does not fit in its row, rest the mouse on the row to see both in full in a tooltip. Drag a row with the left mouse button to drop its file or folder in an Explorer folder, on the desktop, in an email or anywhere else that accepts files. The drop follows the usual Explorer rules for copy, move and shortcut.
 
 The pin button at the right end of the search box is the **Keep open** toggle. With the pin on, the bar does not hide when it loses the focus and it no longer stays on top of other windows. Opening a result, showing it in its folder and copying leave it open. `Esc` still hides it. The hotkey and the tray icon bring it to the front with the focus in the search box, or hide it when it is already the active window. The pin state is remembered across restarts and updates.
 
@@ -162,7 +162,7 @@ All files are in the data folder, `%LOCALAPPDATA%\sgcFSearch` by default.
 | `usage.json` | open and copy counts for the ranking |
 | `history.json` | search bar history |
 | `saved_filters.json` | saved filters of the **Saved** chip, name and query of each one |
-| `bar.json` | search bar pin state and one position per monitor layout |
+| `bar.json` | search bar pin state, one position and width per monitor layout |
 | `daemon.log` | log file, rotated at 2 MB |
 
 ## Portable mode
